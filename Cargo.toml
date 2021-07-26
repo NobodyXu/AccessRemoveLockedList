@@ -1,5 +1,5 @@
 [package]
-name = "AccessRemoveLockedList"
+name = "access_remove_locked_list"
 version = "0.1.0"
 authors = ["Jiahao XU <Jiahao_XU@outlook.com>"]
 edition = "2018"
