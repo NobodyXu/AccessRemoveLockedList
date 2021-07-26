@@ -1,3 +1,5 @@
+pub extern crate tokio;
+
 #[cfg(test)]
 mod tests {
     #[test]
