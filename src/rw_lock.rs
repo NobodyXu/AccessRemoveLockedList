@@ -50,4 +50,30 @@ mod inline {
     }
 }
 
+#[cfg(feature = "permutation_testing")]
+#[macro_use]
+mod inline {
+    pub(crate) use loom::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+    pub(crate) fn read<T: ?Sized>(rwlock: &RwLock<T>) -> RwLockReadGuard<'_, T> {
+        rwlock.read().expect("Failed to lock std::sync::RwLock for reading")
+    }
+
+    pub(crate) fn write<T: ?Sized>(rwlock: &RwLock<T>) -> RwLockWriteGuard<'_, T> {
+        rwlock.write().expect("Failed to lock std::sync::RwLock for writing")
+    }
+
+    macro_rules! read {
+        ( $lock:expr ) => {
+            $crate::rw_lock::read($lock)
+        };
+    }
+
+    macro_rules! write {
+        ( $lock:expr ) => {
+            $crate::rw_lock::write($lock)
+        };
+    }
+}
+
 pub(crate) use inline::*;
