@@ -1,9 +1,7 @@
 use core::marker::PhantomData;
 use core::ptr;
 
-use concurrency_toolkit::{sync::RwLock, obtain_read_lock, obtain_write_lock};
-
-pub use core::sync::atomic::{AtomicPtr, Ordering};
+use concurrency_toolkit::{sync::RwLock, atomic::*, obtain_read_lock, obtain_write_lock};
 
 /// Doubly linked intrusive list node.
 ///
