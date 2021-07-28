@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 use core::ptr;
 
-use crate::rw_lock::RwLock;
+use concurrency_toolkit::{sync::RwLock, obtain_read_lock, obtain_write_lock};
 
 pub use core::sync::atomic::{AtomicPtr, Ordering};
 
@@ -53,7 +53,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     ///
     /// * `node` - it must not be added twice!
     pub async unsafe fn push_back(&self, node: &'a Node) {
-        let _read_guard = read!(&self.rwlock);
+        let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
 
         loop {
@@ -90,7 +90,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     ///
     /// * `node` - it must not be added twice!
     pub async unsafe fn push_front(&self, node: &'a Node) {
-        let _read_guard = read!(&self.rwlock);
+        let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
 
         loop {
