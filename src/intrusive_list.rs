@@ -26,6 +26,25 @@ pub unsafe trait IntrusiveListNode<T> {
     fn get_elem(&self) -> T;
 }
 
+/// Sample implementation of IntrusiveListNode
+pub struct IntrusiveListNodeImpl<T: Clone> {
+    next_ptr: AtomicPtr<()>,
+    prev_ptr: AtomicPtr<()>,
+    elem: T,
+}
+unsafe impl<T: Clone> IntrusiveListNode<T> for IntrusiveListNodeImpl<T> {
+    fn get_next_ptr(&self) -> &AtomicPtr<()> {
+        &self.next_ptr
+    }
+    fn get_prev_ptr(&self) -> &AtomicPtr<()> {
+        &self.prev_ptr
+    }
+
+    fn get_elem(&self) -> T {
+        self.elem.clone()
+    }
+}
+
 /// IntrusiveList guarantees that
 ///  - push and read can be done concurrently while allowing stale read;
 ///  - deletion can only be done sequentially when there is no
