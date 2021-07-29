@@ -19,7 +19,7 @@ use crate::utility::*;
 ///
 /// __**YOU MUST NOT USE THE SAME NODE IN TWO LISTS SIMULTANEOUSLY OR
 /// ADD/REMOVE THE SAME NODE SIMULTANEOUSLY**__
-pub trait IntrusiveListNode<T> {
+pub unsafe trait IntrusiveListNode<T> {
     fn get_next_ptr(&self) -> &AtomicPtr<()>;
     fn get_prev_ptr(&self) -> &AtomicPtr<()>;
 
