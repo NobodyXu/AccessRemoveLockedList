@@ -93,7 +93,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             let node = node as *const _ as *mut ();
             if last.is_null() {
                 match self.first_ptr.compare_exchange_weak(null, node, RW_ORD, R_ORD) {
-                    Ok(_) => break assert_store_ptr(&self.last_ptr, null, node),
+                    Ok(_) => (),
                     Err(_) => continue,
                 }
             } else {
@@ -101,10 +101,11 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     .get_next_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
-                    Ok(_) => break assert_store_ptr(&self.last_ptr, last, node),
+                    Ok(_) => (),
                     Err(_) => continue,
                 }
             }
+            break assert_store_ptr(&self.last_ptr, last, node);
         }
         self.size.fetch_add(1, RW_ORD);
     }
