@@ -119,6 +119,40 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         }
     }
 
+    /// Insert `node` after `anchor`.
+    ///
+    /// # Safety 
+    ///
+    ///  * `anchor` - it must be in this list!
+    ///  * `node` - it must not be added twice!
+    #[maybe_async]
+    pub async unsafe fn insert_after(&self, anchor: &'a Node, node: &'a Node) {
+        let _read_guard = obtain_read_lock!(&self.rwlock);
+
+        let anchor_next_ptr = anchor.get_next_ptr();
+        let anchor = anchor as *const _ as *mut ();
+
+        node.get_prev_ptr().store(anchor, W_ORD);
+
+        let node_next_ptr = node.get_next_ptr();
+        let node = node as *const _ as *mut ();
+
+        loop {
+            let next = anchor_next_ptr.load(R_ORD);
+
+            node_next_ptr.store(next, W_ORD);
+            match anchor_next_ptr.compare_exchange_weak(next, node, RW_ORD, R_ORD) {
+                Ok(_) => {
+                    if next.is_null() {
+                        assert_store_ptr(&self.last_ptr, anchor, node);
+                    }
+                    break
+                },
+                Err(_) => continue,
+            }
+        }
+    }
+
     /// Returns `true` if `node` is indeed inside `self`, otherwise `false`.
     ///
     /// # Safety
