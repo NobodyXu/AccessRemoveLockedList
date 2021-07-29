@@ -2,7 +2,9 @@ use core::marker::PhantomData;
 use core::ptr;
 
 use concurrency_toolkit::maybe_async;
-use concurrency_toolkit::{sync::RwLock, atomic::*, obtain_read_lock, obtain_write_lock};
+use concurrency_toolkit::sync::RwLock;
+use concurrency_toolkit::atomic::{AtomicPtr, Ordering, assert_store_ptr};
+use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
 
 /// Doubly linked intrusive list node.
 ///
@@ -69,11 +71,10 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
-                assert!(ptr::eq(null, self.last_ptr.swap(node, RW_ORD)));
+                assert_store_ptr(&self.last_ptr, null, node, RW_ORD, W_ORD);
             } else {
-                let last = &*(last as *const Node);
                 let node = node as *const Node as *mut Node as *mut ();
-                match last
+                match (*last)
                     .get_next_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
@@ -81,7 +82,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Err(_) => continue,
                 }
                 let node = node as *mut Node;
-                assert!(ptr::eq(last, self.last_ptr.swap(node, RW_ORD)));
+                assert_store_ptr(&self.last_ptr, last, node, RW_ORD, W_ORD);
             }
         }
     }
@@ -107,11 +108,10 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
-                assert!(ptr::eq(null, self.last_ptr.swap(node, RW_ORD)));
+                assert_store_ptr(&self.last_ptr, null, node, RW_ORD, W_ORD);
             } else {
-                let first = &*(first as *const Node);
                 let node = node as *const Node as *mut Node as *mut ();
-                match first
+                match (*first)
                     .get_prev_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
@@ -119,7 +119,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Err(_) => continue,
                 }
                 let node = node as *mut Node;
-                assert!(ptr::eq(first, self.first_ptr.swap(node, RW_ORD)));
+                assert_store_ptr(&self.first_ptr, first, node, RW_ORD, W_ORD);
             }
         }
     }
