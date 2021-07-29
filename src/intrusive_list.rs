@@ -270,4 +270,19 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     pub fn size_hint(&self) -> usize {
         self.size.load(R_ORD)
     }
+
+    /// Return the size of the list before clearing
+    #[maybe_async]
+    pub async fn clear(&self) -> usize {
+        let _write_guard = obtain_write_lock!(&self.rwlock);
+        let size = self.size_hint();
+
+        let null = ptr::null_mut();
+
+        self.first_ptr.store(null, W_ORD);
+        self.last_ptr.store(null, W_ORD);
+        self.size.store(0, W_ORD);
+
+        size
+    }
 }
