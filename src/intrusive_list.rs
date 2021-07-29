@@ -93,19 +93,17 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             let node = node as *const _ as *mut ();
             if last.is_null() {
                 match self.first_ptr.compare_exchange_weak(null, node, RW_ORD, R_ORD) {
-                    Ok(_) => (),
+                    Ok(_) => break assert_store_ptr(&self.last_ptr, null, node),
                     Err(_) => continue,
                 }
-                assert_store_ptr(&self.last_ptr, null, node);
             } else {
                 match (*(last as *mut Node))
                     .get_next_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
-                    Ok(_) => (),
+                    Ok(_) => break assert_store_ptr(&self.last_ptr, last, node),
                     Err(_) => continue,
                 }
-                assert_store_ptr(&self.last_ptr, last, node);
             }
         }
         self.size.fetch_add(1, RW_ORD);
@@ -130,19 +128,17 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             let node = node as *const _ as *mut ();
             if first.is_null() {
                 match self.first_ptr.compare_exchange_weak(null, node, RW_ORD, R_ORD) {
-                    Ok(_) => (),
+                    Ok(_) => break assert_store_ptr(&self.last_ptr, null, node),
                     Err(_) => continue,
                 }
-                assert_store_ptr(&self.last_ptr, null, node);
             } else {
                 match (*(first as *mut Node))
                     .get_prev_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
-                    Ok(_) => (),
+                    Ok(_) => break assert_store_ptr(&self.first_ptr, first, node),
                     Err(_) => continue,
                 }
-                assert_store_ptr(&self.first_ptr, first, node);
             }
         }
         self.size.fetch_add(1, RW_ORD);
