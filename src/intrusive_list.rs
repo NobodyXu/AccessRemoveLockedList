@@ -3,8 +3,10 @@ use core::ptr;
 
 use concurrency_toolkit::maybe_async;
 use concurrency_toolkit::sync::RwLock;
-use concurrency_toolkit::atomic::{AtomicPtr, Ordering, assert_store_ptr};
+use concurrency_toolkit::atomic::AtomicPtr;
 use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
+
+use crate::utility::*;
 
 /// Doubly linked intrusive list node.
 ///
@@ -35,9 +37,6 @@ impl<'a, Node: IntrusiveListNode<T>, T> Default for IntrusiveList<'a, Node, T> {
         Self::new()
     }
 }
-const RW_ORD: Ordering = Ordering::AcqRel;
-const R_ORD: Ordering = Ordering::Acquire;
-const W_ORD: Ordering = Ordering::Release;
 
 impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     pub fn new() -> Self {
@@ -71,7 +70,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
-                assert_store_ptr(&self.last_ptr, null, node, RW_ORD, W_ORD);
+                assert_store_ptr(&self.last_ptr, null, node);
             } else {
                 let node = node as *const Node as *mut Node as *mut ();
                 match (*last)
@@ -82,7 +81,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Err(_) => continue,
                 }
                 let node = node as *mut Node;
-                assert_store_ptr(&self.last_ptr, last, node, RW_ORD, W_ORD);
+                assert_store_ptr(&self.last_ptr, last, node);
             }
         }
     }
@@ -108,7 +107,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
-                assert_store_ptr(&self.last_ptr, null, node, RW_ORD, W_ORD);
+                assert_store_ptr(&self.last_ptr, null, node);
             } else {
                 let node = node as *const Node as *mut Node as *mut ();
                 match (*first)
@@ -119,7 +118,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Err(_) => continue,
                 }
                 let node = node as *mut Node;
-                assert_store_ptr(&self.first_ptr, first, node, RW_ORD, W_ORD);
+                assert_store_ptr(&self.first_ptr, first, node);
             }
         }
     }
@@ -138,18 +137,18 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
 
         if next_node.is_null() {
             let node = node as *mut _;
-            assert_store_ptr(&self.last_ptr, node, prev_node, RW_ORD, W_ORD);
+            assert_store_ptr(&self.last_ptr, node, prev_node);
         } else {
             let prev_node = prev_node as *mut ();
-            assert_store_ptr((*next_node).get_prev_ptr(), node, prev_node, RW_ORD, W_ORD);
+            assert_store_ptr((*next_node).get_prev_ptr(), node, prev_node);
         }
 
         if prev_node.is_null() {
             let node = node as *mut _;
-            assert_store_ptr(&self.first_ptr, node, next_node, RW_ORD, W_ORD);
+            assert_store_ptr(&self.first_ptr, node, next_node);
         } else {
             let next_node = next_node as *mut ();
-            assert_store_ptr((*prev_node).get_next_ptr(), node, next_node, RW_ORD, W_ORD);
+            assert_store_ptr((*prev_node).get_next_ptr(), node, next_node);
         }
     }
 }
