@@ -58,10 +58,11 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
 
+        node.get_next_ptr().store(null, W_ORD);
+
         loop {
             let last = self.last_ptr.load(R_ORD);
 
-            node.get_next_ptr().store(null, W_ORD);
             node.get_prev_ptr().store(last as *mut (), W_ORD);
 
             if last.is_null() {
@@ -95,11 +96,12 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
 
+        node.get_prev_ptr().store(null, W_ORD);
+
         loop {
             let first = self.first_ptr.load(R_ORD);
 
             node.get_next_ptr().store(first as *mut (), W_ORD);
-            node.get_prev_ptr().store(null, W_ORD);
 
             if first.is_null() {
                 let null = ptr::null_mut();
