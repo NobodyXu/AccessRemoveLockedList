@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use core::hint::unreachable_unchecked;
 use core::ptr;
 
 use concurrency_toolkit::maybe_async;
@@ -123,11 +124,15 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         }
     }
 
+    /// Returns `true` if `node` is indeed inside `self`, otherwise `false`.
+    ///
     /// # Safety
     ///
-    /// * `node` - it must be added to the list!
+    /// * `node` - it must be in one of the following state:
+    ///  - `node.get_next_ptr().is_null() && node.get_prev_ptr().is_null()`
+    ///  - `node` is added to `self`
     #[maybe_async]
-    pub async unsafe fn remove_node(&self, node: &'a Node) {
+    pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
         let _write_guard = obtain_write_lock!(&self.rwlock);
 
         let prev_node = node.get_prev_ptr().load(R_ORD) as *mut Node;
@@ -137,7 +142,24 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
 
         if next_node.is_null() {
             let node = node as *mut _;
-            assert_store_ptr(&self.last_ptr, node, prev_node);
+            match self.last_ptr
+                .compare_exchange_weak(node, prev_node, RW_ORD, R_ORD)
+            {
+                Ok(_) => (),
+                Err(_) => {
+                    if prev_node.is_null() {
+                        return false
+                    } else {
+                        #[cfg(debug)]
+                        panic!(
+                            "node {:#?} does not belong to list {:#?}",
+                            node,
+                            self as *const _
+                        );
+                        unreachable_unchecked()
+                    }
+                },
+            }
         } else {
             let prev_node = prev_node as *mut ();
             assert_store_ptr((*next_node).get_prev_ptr(), node, prev_node);
@@ -150,5 +172,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             let next_node = next_node as *mut ();
             assert_store_ptr((*prev_node).get_next_ptr(), node, next_node);
         }
+
+        true
     }
 }
