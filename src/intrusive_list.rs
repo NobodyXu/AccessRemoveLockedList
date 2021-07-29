@@ -267,8 +267,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         true
     }
 
-    #[maybe_async]
-    pub async fn size_hint(&self) -> usize {
+    pub fn size_hint(&self) -> usize {
         self.size.load(R_ORD)
     }
 }
