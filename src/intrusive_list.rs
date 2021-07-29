@@ -1,5 +1,4 @@
 use core::marker::PhantomData;
-use core::hint::unreachable_unchecked;
 use core::ptr;
 
 use concurrency_toolkit::maybe_async;
@@ -140,17 +139,15 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             match self.last_ptr.compare_exchange_weak(node, prev_node, RW_ORD, R_ORD) {
                 Ok(_) => (),
                 Err(_) => {
-                    if prev_node.is_null() {
-                        return false
-                    } else {
-                        #[cfg(debug)]
+                    #[cfg(debug)]
+                    if !prev_node.is_null() {
                         panic!(
-                            "node {:#?} does not belong to list {:#?}",
+                            "node {:#?} belongs to another list other than {:#?}",
                             node,
                             self as *const _
                         );
-                        unreachable_unchecked()
                     }
+                    return false
                 },
             }
         } else {
