@@ -27,8 +27,8 @@ pub trait IntrusiveListNode<T> {
 ///  - deletion can only be done sequentially when there is no
 ///    writer (excluding the thread doing deletion) or reader.
 pub struct IntrusiveList<'a, Node: IntrusiveListNode<T>, T> {
-    first_ptr: AtomicPtr<Node>,
-    last_ptr: AtomicPtr<Node>,
+    first_ptr: AtomicPtr<()>,
+    last_ptr: AtomicPtr<()>,
     rwlock: RwLock<()>,
     phantom0: PhantomData<T>,
     phantom1: PhantomData<&'a Node>,
@@ -63,26 +63,23 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         loop {
             let last = self.last_ptr.load(R_ORD);
 
-            node.get_prev_ptr().store(last as *mut (), W_ORD);
+            node.get_prev_ptr().store(last, W_ORD);
 
+            let node = node as *const _ as *mut ();
             if last.is_null() {
-                let null = ptr::null_mut();
-                let node = node as *const Node as *mut Node;
                 match self.first_ptr.compare_exchange_weak(null, node, RW_ORD, R_ORD) {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
                 assert_store_ptr(&self.last_ptr, null, node);
             } else {
-                let node = node as *const Node as *mut Node as *mut ();
-                match (*last)
+                match (*(last as *mut Node))
                     .get_next_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
-                let node = node as *mut Node;
                 assert_store_ptr(&self.last_ptr, last, node);
             }
         }
@@ -101,26 +98,23 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         loop {
             let first = self.first_ptr.load(R_ORD);
 
-            node.get_next_ptr().store(first as *mut (), W_ORD);
+            node.get_next_ptr().store(first, W_ORD);
 
+            let node = node as *const _ as *mut ();
             if first.is_null() {
-                let null = ptr::null_mut();
-                let node = node as *const Node as *mut Node;
                 match self.first_ptr.compare_exchange_weak(null, node, RW_ORD, R_ORD) {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
                 assert_store_ptr(&self.last_ptr, null, node);
             } else {
-                let node = node as *const Node as *mut Node as *mut ();
-                match (*first)
+                match (*(first as *mut Node))
                     .get_prev_ptr()
                     .compare_exchange_weak(null, node, RW_ORD, R_ORD)
                 {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
-                let node = node as *mut Node;
                 assert_store_ptr(&self.first_ptr, first, node);
             }
         }
@@ -137,16 +131,13 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
         let _write_guard = obtain_write_lock!(&self.rwlock);
 
-        let prev_node = node.get_prev_ptr().load(R_ORD) as *mut Node;
-        let next_node = node.get_next_ptr().load(R_ORD) as *mut Node;
+        let prev_node = node.get_prev_ptr().load(R_ORD);
+        let next_node = node.get_next_ptr().load(R_ORD);
 
         let node = node as *const _ as *mut _;
 
         if next_node.is_null() {
-            let node = node as *mut _;
-            match self.last_ptr
-                .compare_exchange_weak(node, prev_node, RW_ORD, R_ORD)
-            {
+            match self.last_ptr.compare_exchange_weak(node, prev_node, RW_ORD, R_ORD) {
                 Ok(_) => (),
                 Err(_) => {
                     if prev_node.is_null() {
@@ -163,15 +154,14 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                 },
             }
         } else {
-            let prev_node = prev_node as *mut ();
+            let next_node = next_node as *mut Node;
             assert_store_ptr((*next_node).get_prev_ptr(), node, prev_node);
         }
 
         if prev_node.is_null() {
-            let node = node as *mut _;
             assert_store_ptr(&self.first_ptr, node, next_node);
         } else {
-            let next_node = next_node as *mut ();
+            let prev_node = prev_node as *mut Node;
             assert_store_ptr((*prev_node).get_next_ptr(), node, next_node);
         }
 
