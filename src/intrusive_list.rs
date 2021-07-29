@@ -3,7 +3,7 @@ use core::ptr;
 
 use concurrency_toolkit::maybe_async;
 use concurrency_toolkit::sync::RwLock;
-use concurrency_toolkit::atomic::AtomicPtr;
+use concurrency_toolkit::atomic::{AtomicPtr, AtomicUsize};
 use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
 
 use crate::utility::*;
@@ -51,6 +51,7 @@ unsafe impl<T: Clone> IntrusiveListNode<T> for IntrusiveListNodeImpl<T> {
 pub struct IntrusiveList<'a, Node: IntrusiveListNode<T>, T> {
     first_ptr: AtomicPtr<()>,
     last_ptr: AtomicPtr<()>,
+    size: AtomicUsize,
     rwlock: RwLock<()>,
     phantom0: PhantomData<T>,
     phantom1: PhantomData<&'a Node>,
@@ -66,6 +67,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         Self {
             first_ptr: AtomicPtr::new(ptr::null_mut()),
             last_ptr: AtomicPtr::new(ptr::null_mut()),
+            size: AtomicUsize::new(0),
             rwlock: RwLock::new(()),
             phantom0: PhantomData,
             phantom1: PhantomData,
@@ -106,6 +108,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                 assert_store_ptr(&self.last_ptr, last, node);
             }
         }
+        self.size.fetch_add(1, RW_ORD);
     }
 
     /// # Safety
@@ -142,6 +145,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                 assert_store_ptr(&self.first_ptr, first, node);
             }
         }
+        self.size.fetch_add(1, RW_ORD);
     }
 
     /// Insert `node` after `anchor`.
@@ -177,6 +181,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                 Err(_) => continue,
             }
         }
+        self.size.fetch_add(1, RW_ORD);
     }
 
     /// Insert `node` before `anchor`.
@@ -212,6 +217,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                 Err(_) => continue,
             }
         }
+        self.size.fetch_add(1, RW_ORD);
     }
 
     /// Returns `true` if `node` is indeed inside `self`, otherwise `false`.
@@ -259,6 +265,13 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             assert_store_ptr((*prev_node).get_next_ptr(), node, next_node);
         }
 
+        self.size.fetch_sub(1, RW_ORD);
+
         true
+    }
+
+    #[maybe_async]
+    pub async fn size_hint(&self) -> usize {
+        self.size.load(R_ORD)
     }
 }
