@@ -7,6 +7,7 @@ use concurrency_toolkit::atomic::AtomicPtr;
 use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
 
 use crate::utility::*;
+use crate::intrusive_forward_list::IntrusiveForwardListNode;
 
 /// Doubly linked intrusive list node.
 ///
@@ -19,11 +20,8 @@ use crate::utility::*;
 ///
 /// __**YOU MUST NOT USE THE SAME NODE IN TWO LISTS SIMULTANEOUSLY OR
 /// ADD/REMOVE THE SAME NODE SIMULTANEOUSLY**__
-pub unsafe trait IntrusiveListNode<T> {
-    fn get_next_ptr(&self) -> &AtomicPtr<()>;
+pub unsafe trait IntrusiveListNode<T>: IntrusiveForwardListNode<T> {
     fn get_prev_ptr(&self) -> &AtomicPtr<()>;
-
-    fn get_elem(&self) -> T;
 }
 
 /// Sample implementation of IntrusiveListNode
@@ -32,16 +30,17 @@ pub struct IntrusiveListNodeImpl<T: Clone> {
     prev_ptr: AtomicPtr<()>,
     elem: T,
 }
-unsafe impl<T: Clone> IntrusiveListNode<T> for IntrusiveListNodeImpl<T> {
+unsafe impl<T: Clone> IntrusiveForwardListNode<T> for IntrusiveListNodeImpl<T> {
     fn get_next_ptr(&self) -> &AtomicPtr<()> {
         &self.next_ptr
     }
-    fn get_prev_ptr(&self) -> &AtomicPtr<()> {
-        &self.prev_ptr
-    }
-
     fn get_elem(&self) -> T {
         self.elem.clone()
+    }
+}
+unsafe impl<T: Clone> IntrusiveListNode<T> for IntrusiveListNodeImpl<T> {
+    fn get_prev_ptr(&self) -> &AtomicPtr<()> {
+        &self.prev_ptr
     }
 }
 
