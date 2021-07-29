@@ -123,4 +123,33 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             }
         }
     }
+
+    /// # Safety
+    ///
+    /// * `node` - it must be added to the list!
+    #[maybe_async]
+    pub async unsafe fn remove_node(&self, node: &'a Node) {
+        let _write_guard = obtain_write_lock!(&self.rwlock);
+
+        let prev_node = node.get_prev_ptr().load(R_ORD) as *mut Node;
+        let next_node = node.get_next_ptr().load(R_ORD) as *mut Node;
+
+        let node = node as *const _ as *mut _;
+
+        if next_node.is_null() {
+            let node = node as *mut _;
+            assert_store_ptr(&self.last_ptr, node, prev_node, RW_ORD, W_ORD);
+        } else {
+            let prev_node = prev_node as *mut ();
+            assert_store_ptr((*next_node).get_prev_ptr(), node, prev_node, RW_ORD, W_ORD);
+        }
+
+        if prev_node.is_null() {
+            let node = node as *mut _;
+            assert_store_ptr(&self.first_ptr, node, next_node, RW_ORD, W_ORD);
+        } else {
+            let next_node = next_node as *mut ();
+            assert_store_ptr((*prev_node).get_next_ptr(), node, next_node, RW_ORD, W_ORD);
+        }
+    }
 }
