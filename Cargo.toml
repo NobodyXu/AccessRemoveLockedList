@@ -11,4 +11,4 @@ async = ["concurrency_toolkit/async_tokio"]
 permutation_testing = ["concurrency_toolkit/permutation_testing"]
 
 [dependencies]
-concurrency_toolkit = { version = "0.1.0" }
+concurrency_toolkit = { version = "0.1.2" }
