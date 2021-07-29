@@ -14,6 +14,11 @@ use crate::utility::*;
 ///
 /// `T` can either be an immutable reference or a `Sized` object, it is not recommended
 /// to return a mutable reference.
+///
+/// # Safety
+///
+/// __**YOU MUST NOT USE THE SAME NODE IN TWO LISTS SIMULTANEOUSLY OR
+/// ADD/REMOVE THE SAME NODE SIMULTANEOUSLY**__
 pub trait IntrusiveListNode<T> {
     fn get_next_ptr(&self) -> &AtomicPtr<()>;
     fn get_prev_ptr(&self) -> &AtomicPtr<()>;
@@ -51,7 +56,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
 
     /// # Safety
     ///
-    /// * `node` - it must not be added twice!
+    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD/REMOVE IT SIMULTANEOUSLY**__
     #[maybe_async]
     pub async unsafe fn push_back(&self, node: &'a Node) {
         let _read_guard = obtain_read_lock!(&self.rwlock);
@@ -86,7 +92,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
 
     /// # Safety
     ///
-    /// * `node` - it must not be added twice!
+    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD/REMOVE IT SIMULTANEOUSLY**__
     #[maybe_async]
     pub async unsafe fn push_front(&self, node: &'a Node) {
         let _read_guard = obtain_read_lock!(&self.rwlock);
@@ -124,7 +131,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     /// # Safety 
     ///
     ///  * `anchor` - it must be in this list!
-    ///  * `node` - it must not be added twice!
+    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD/REMOVE IT SIMULTANEOUSLY**__
     #[maybe_async]
     pub async unsafe fn insert_after(&self, anchor: &'a Node, node: &'a Node) {
         let _read_guard = obtain_read_lock!(&self.rwlock);
@@ -158,7 +166,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     /// # Safety 
     ///
     ///  * `anchor` - it must be in this list!
-    ///  * `node` - it must not be added twice!
+    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD/REMOVE IT SIMULTANEOUSLY**__
     #[maybe_async]
     pub async unsafe fn insert_before(&self, anchor: &'a Node, node: &'a Node) {
         let _read_guard = obtain_read_lock!(&self.rwlock);
@@ -191,9 +200,11 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     ///
     /// # Safety
     ///
-    /// * `node` - it must be in one of the following state:
-    ///  - `node.get_next_ptr().is_null() && node.get_prev_ptr().is_null()`
-    ///  - `node` is added to `self`
+    ///  * `node` - it must be in one of the following state:
+    ///     - `node.get_next_ptr().is_null() && node.get_prev_ptr().is_null()`
+    ///     - `node` is added to `self`
+    ///    and, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD/REMOVE IT SIMULTANEOUSLY**__
     #[maybe_async]
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
         let _write_guard = obtain_write_lock!(&self.rwlock);
