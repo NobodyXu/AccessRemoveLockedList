@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 use core::ptr;
 
+use concurrency_toolkit::maybe_async;
 use concurrency_toolkit::{sync::RwLock, atomic::*, obtain_read_lock, obtain_write_lock};
 
 /// Doubly linked intrusive list node.
@@ -50,6 +51,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     /// # Safety
     ///
     /// * `node` - it must not be added twice!
+    #[maybe_async]
     pub async unsafe fn push_back(&self, node: &'a Node) {
         let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
@@ -87,6 +89,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     /// # Safety
     ///
     /// * `node` - it must not be added twice!
+    #[maybe_async]
     pub async unsafe fn push_front(&self, node: &'a Node) {
         let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
