@@ -160,10 +160,12 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
+        use Ordering::Relaxed;
+
         let _write_guard = obtain_write_lock!(&self.rwlock);
 
-        let prev_node = node.get_prev_ptr().load(R_ORD);
-        let next_node = node.get_next_ptr().load(R_ORD);
+        let prev_node = node.get_prev_ptr().load(Relaxed);
+        let next_node = node.get_next_ptr().load(Relaxed);
 
         let node = node as *const _ as *mut _;
 
@@ -173,7 +175,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
             let next_node = next_node as *mut Node;
             (*next_node).get_prev_ptr()
         };
-        match last_ptr.compare_exchange_weak(node, prev_node, RW_ORD, R_ORD) {
+        match last_ptr.compare_exchange_weak(node, prev_node, Relaxed, Relaxed) {
             Ok(_) => (),
             Err(_) => return false,
         }
@@ -184,7 +186,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
             let prev_node = prev_node as *mut Node;
             (*prev_node).get_next_ptr()
         };
-        assert_store_ptr(first_ptr, node, next_node);
+        assert_store_ptr_relaxed(first_ptr, node, next_node);
 
         true
     }
@@ -192,9 +194,11 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     /// * `f` - return true to remove the node or false to keep it
     #[maybe_async]
     pub async fn remove_if(&self, mut f: impl FnMut(&'a Node) -> bool) {
+        use Ordering::Relaxed;
+
         let _write_guard = obtain_write_lock!(&self.rwlock);
 
-        let mut it = self.first_ptr.load(Ordering::Relaxed);
+        let mut it = self.first_ptr.load(Relaxed);
 
         let mut prev: *const Node = ptr::null();
         let mut beg: *const Node = ptr::null();
@@ -210,18 +214,20 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
                 beg = ptr::null();
             }
             prev = node;
-            it = node.get_next_ptr().load(Ordering::Relaxed);
+            it = node.get_next_ptr().load(Relaxed);
         }
     }
 
     #[maybe_async]
     pub async fn clear(&self) {
+        use Ordering::Relaxed;
+
         let _write_guard = obtain_write_lock!(&self.rwlock);
 
         let null = ptr::null_mut();
 
-        self.first_ptr.store(null, W_ORD);
-        self.last_ptr.store(null, W_ORD);
+        self.first_ptr.store(null, Relaxed);
+        self.last_ptr .store(null, Relaxed);
     }
 
     /// Move all list nodes between `first` and `last` (inclusive) from `self`
@@ -244,8 +250,10 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         first: &'a Node,
         last: &'a Node
     ) -> Option<()> {
-        let prev_node = first.get_prev_ptr().load(R_ORD);
-        let next_node = last.get_next_ptr().load(R_ORD);
+        use Ordering::Relaxed;
+
+        let prev_node = first.get_prev_ptr().load(Relaxed);
+        let next_node = last .get_next_ptr().load(Relaxed);
 
         let last_ptr = if next_node.is_null() {
             &self.last_ptr
@@ -254,7 +262,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
             (*next_node).get_prev_ptr()
         };
         let last = last as *const _ as *mut ();
-        match last_ptr.compare_exchange_weak(last, prev_node, RW_ORD, R_ORD) {
+        match last_ptr.compare_exchange_weak(last, prev_node, Relaxed, Relaxed) {
             Ok(_) => (),
             Err(_) => return None,
         }
@@ -266,11 +274,11 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
             (*prev_node).get_next_ptr()
         };
         let first = first as *const _ as *mut ();
-        match first_ptr.compare_exchange_weak(first, next_node, RW_ORD, R_ORD) {
+        match first_ptr.compare_exchange_weak(first, next_node, Relaxed, Relaxed) {
             Ok(_) => (),
             Err(_) => {
                 // Revert the change of last_ptr
-                assert_store_ptr(last_ptr, prev_node, last);
+                assert_store_ptr_relaxed(last_ptr, prev_node, last);
                 return None
             },
         }
