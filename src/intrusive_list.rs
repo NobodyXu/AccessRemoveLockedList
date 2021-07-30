@@ -75,7 +75,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         }
     }
 
-    // TODO: Implements push_*_splice, insert_*_splice
+    // TODO: Implements push_*_splice
 
     /// # Safety
     ///
@@ -144,78 +144,6 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
                     Ok(_) => break assert_store_ptr(&self.first_ptr, first, node),
                     Err(_) => continue,
                 }
-            }
-        }
-    }
-
-    /// Insert `node` after `anchor`.
-    ///
-    /// # Safety 
-    ///
-    ///  * `anchor` - it must be in this list!
-    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
-    ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
-    ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-    #[maybe_async]
-    pub async unsafe fn insert_after(&self, anchor: &'a Node, node: &'a Node) {
-        let _read_guard = obtain_read_lock!(&self.rwlock);
-
-        let anchor_next_ptr = anchor.get_next_ptr();
-        let anchor = anchor as *const _ as *mut ();
-
-        node.get_prev_ptr().store(anchor, W_ORD);
-
-        let node_next_ptr = node.get_next_ptr();
-        let node = node as *const _ as *mut ();
-
-        loop {
-            let next = anchor_next_ptr.load(R_ORD);
-
-            node_next_ptr.store(next, W_ORD);
-            match anchor_next_ptr.compare_exchange_weak(next, node, RW_ORD, R_ORD) {
-                Ok(_) => {
-                    if next.is_null() {
-                        assert_store_ptr(&self.last_ptr, anchor, node);
-                    }
-                    break
-                },
-                Err(_) => continue,
-            }
-        }
-    }
-
-    /// Insert `node` before `anchor`.
-    ///
-    /// # Safety 
-    ///
-    ///  * `anchor` - it must be in this list!
-    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
-    ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
-    ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-    #[maybe_async]
-    pub async unsafe fn insert_before(&self, anchor: &'a Node, node: &'a Node) {
-        let _read_guard = obtain_read_lock!(&self.rwlock);
-
-        let anchor_prev_ptr = anchor.get_prev_ptr();
-        let anchor = anchor as *const _ as *mut ();
-
-        node.get_next_ptr().store(anchor, W_ORD);
-
-        let node_prev_ptr = node.get_prev_ptr();
-        let node = node as *const _ as *mut ();
-
-        loop {
-            let prev = anchor_prev_ptr.load(R_ORD);
-
-            node_prev_ptr.store(prev, W_ORD);
-            match anchor_prev_ptr.compare_exchange_weak(prev, node, RW_ORD, R_ORD) {
-                Ok(_) => {
-                    if prev.is_null() {
-                        assert_store_ptr(&self.first_ptr, anchor, node);
-                    }
-                    break
-                },
-                Err(_) => continue,
             }
         }
     }
