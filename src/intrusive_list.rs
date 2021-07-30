@@ -254,14 +254,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             let prev_node = prev_node as *mut Node;
             (*prev_node).get_next_ptr()
         };
-        match first_ptr.compare_exchange_weak(node, next_node, RW_ORD, R_ORD) {
-            Ok(_) => (),
-            Err(_) => {
-                // Revert the change of last_ptr
-                assert_store_ptr(last_ptr, prev_node, node);
-                return false
-            },
-        }
+        assert_store_ptr(first_ptr, node, next_node);
 
         true
     }
