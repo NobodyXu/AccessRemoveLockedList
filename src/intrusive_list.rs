@@ -202,6 +202,58 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     }
 
     /// Move all list nodes between `first` and `last` (inclusive) from `self`
+    /// and return `Some(())`.
+    ///
+    /// Or return `None` if `first` or `last` does not belong to `self`.
+    ///
+    /// # Safety
+    ///
+    ///  * `first`, `last` - `first` must be to the left of the `last` and
+    ///    __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
+    ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
+    #[must_use]
+    #[maybe_async]
+    async unsafe fn splice_impl(
+        &self,
+        first: &'a Node,
+        last: &'a Node
+    ) -> Option<()> {
+        let prev_node = first.get_prev_ptr().load(R_ORD);
+        let next_node = last.get_next_ptr().load(R_ORD);
+
+        let last_ptr = if next_node.is_null() {
+            &self.last_ptr
+        } else {
+            let next_node = next_node as *mut Node;
+            (*next_node).get_prev_ptr()
+        };
+        let last = last as *const _ as *mut ();
+        match last_ptr.compare_exchange_weak(last, prev_node, RW_ORD, R_ORD) {
+            Ok(_) => (),
+            Err(_) => return None,
+        }
+
+        let first_ptr = if prev_node.is_null() {
+            &self.first_ptr
+        } else {
+            let prev_node = prev_node as *mut Node;
+            (*prev_node).get_next_ptr()
+        };
+        let first = first as *const _ as *mut ();
+        match first_ptr.compare_exchange_weak(first, next_node, RW_ORD, R_ORD) {
+            Ok(_) => (),
+            Err(_) => {
+                // Revert the change of last_ptr
+                assert_store_ptr(last_ptr, prev_node, last);
+                return None
+            },
+        }
+
+        Some(())
+    }
+
+    /// Move all list nodes between `first` and `last` (inclusive) from `self`
     /// and return them as `Some(Splice)`.
     ///
     /// Or return `None` if `first` or `last` does not belong to `self`.
@@ -221,40 +273,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     ) -> Option<Splice<'a, Node, T>> {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
-
-            let prev_node = first.get_prev_ptr().load(R_ORD);
-            let next_node = last.get_next_ptr().load(R_ORD);
-
-            let last_ptr = if next_node.is_null() {
-                &self.last_ptr
-            } else {
-                let next_node = next_node as *mut Node;
-                (*next_node).get_prev_ptr()
-            };
-            let last = last as *const _ as *mut ();
-            match last_ptr.compare_exchange_weak(last, prev_node, RW_ORD, R_ORD) {
-                Ok(_) => (),
-                Err(_) => return None,
-            }
-
-            let first_ptr = if prev_node.is_null() {
-                &self.first_ptr
-            } else {
-                let prev_node = prev_node as *mut Node;
-                (*prev_node).get_next_ptr()
-            };
-            let first = first as *const _ as *mut ();
-            match first_ptr.compare_exchange_weak(first, next_node, RW_ORD, R_ORD) {
-                Ok(_) => (),
-                Err(_) => {
-                    // Revert the change of last_ptr
-                    assert_store_ptr(last_ptr, prev_node, last);
-                    return None
-                },
-            }
-        }
-
-        Some(Splice::new(first, last))
+            self.splice_impl(first, last)
+        }.map(|_| {Splice::new(first, last)})
     }
 }
 pub struct Splice<'a, Node: IntrusiveListNode<T>, T> {
