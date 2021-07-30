@@ -1,9 +1,11 @@
 use core::marker::PhantomData;
 use core::ptr;
+use core::iter::{Iterator, DoubleEndedIterator};
+use core::convert::From;
 
 use concurrency_toolkit::maybe_async;
 use concurrency_toolkit::sync::RwLock;
-use concurrency_toolkit::atomic::AtomicPtr;
+use concurrency_toolkit::atomic::{AtomicPtr, Ordering};
 use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
 
 use crate::utility::*;
@@ -271,6 +273,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         true
     }
 
+    // TODO: remove_if
+
     #[maybe_async]
     pub async fn clear(&self) {
         let _write_guard = obtain_write_lock!(&self.rwlock);
@@ -282,7 +286,7 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     }
 
     /// Move all list nodes between `first` and `last` (inclusive) from `self`
-    /// and return them as a new `IntrusiveList`.
+    /// and return them as a new `Splice`.
     ///
     /// # Safety
     ///
@@ -290,12 +294,13 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     ///    and, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
+    #[must_use]
     #[maybe_async]
     pub async unsafe fn splice(
         &self,
         first: &'a Node,
         last: &'a Node
-    ) -> Self {
+    ) -> Splice<'a, Node, T> {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
 
@@ -319,11 +324,82 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
             assert_store_ptr(ptr, first as *const _ as *mut (), next_node);
         }
 
-        let ret: Self = Default::default();
+        Splice::new(first, last)
+    }
+}
+pub struct Splice<'a, Node: IntrusiveListNode<T>, T> {
+    first_ptr: * mut (),
+    last_ptr: *mut (),
+    phantom0: PhantomData<T>,
+    phantom1: PhantomData<&'a Node>,
+}
+impl<'a, Node: IntrusiveListNode<T>, T> Splice<'a, Node, T> {
+    /// # Safety
+    ///
+    /// Assumes `first` and `last` is already linked and the link must not be modified
+    /// after `Splice` is created.
+    pub unsafe fn new(first: &'a Node, last: &'a Node) -> Self {
+        Self {
+            first_ptr: first as *const _ as *mut (),
+            last_ptr:  last  as *const _ as *mut (),
+            phantom0: PhantomData,
+            phantom1: PhantomData,
+        }
+    }
+}
+impl<'a, Node: IntrusiveListNode<T>, T>
+    From<Splice<'a, Node, T>> for (&'a Node, &'a Node)
+{
+    fn from(splice: Splice<'a, Node, T>) -> Self {
+        unsafe {(
+            &* (splice.first_ptr as *mut Node as *const Node),
+            &* (splice.last_ptr  as *mut Node as *const Node),
+        )}
+    }
+}
+impl<'a, Node: IntrusiveListNode<T>, T> Iterator for Splice<'a, Node, T> {
+    type Item = &'a Node;
 
-        ret.first_ptr.store(first as *const _ as *mut(), W_ORD);
-        ret.last_ptr.store(last as *const _ as *mut(), W_ORD);
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.first_ptr.is_null() {
+            return None;
+        }
 
-        ret
+        let curr_node = unsafe { &* (self.first_ptr as *mut Node as *const Node) };
+
+        if self.first_ptr == self.last_ptr {
+            self.first_ptr = ptr::null_mut();
+            self.last_ptr = self.first_ptr;
+        } else {
+            self.first_ptr = curr_node.get_next_ptr().load(Ordering::Relaxed);
+        }
+
+        Some(curr_node)
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        if self.last_ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { &* (self.last_ptr as *mut Node as *const Node) })
+        }
+    }
+}
+impl<'a, Node: IntrusiveListNode<T>, T> DoubleEndedIterator for Splice<'a, Node, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.last_ptr.is_null() {
+            return None;
+        }
+
+        let curr_node = unsafe { &* (self.last_ptr as *mut Node as *const Node) };
+
+        if self.first_ptr == self.last_ptr {
+            self.first_ptr = ptr::null_mut();
+            self.last_ptr = self.first_ptr;
+        } else {
+            self.last_ptr = curr_node.get_prev_ptr().load(Ordering::Relaxed);
+        }
+
+        Some(curr_node)
     }
 }
