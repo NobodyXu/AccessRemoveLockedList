@@ -191,9 +191,13 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         true
     }
 
-    /// * `f` - return true to remove the node or false to keep it
+    ///  * `f` - return true to remove the node or false to keep it
+    /// 
+    /// Return (# num of elements left, # num of elements removed)
     #[maybe_async]
-    pub async fn remove_if(&self, mut f: impl FnMut(&'a Node) -> bool) {
+    pub async fn remove_if(&self, mut f: impl FnMut(&'a Node) -> bool)
+        -> (usize, usize)
+    {
         use Ordering::Relaxed;
 
         let _write_guard = obtain_write_lock!(&self.rwlock);
@@ -203,9 +207,13 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         let mut prev: *const Node = ptr::null();
         let mut beg: *const Node = ptr::null();
 
+        let mut cnt = (0, 0);
+
         while !it.is_null() {
             let node = unsafe { &* (it as *mut Node as *const Node) };
+            cnt.0 += 1;
             if f(node) {
+                cnt.1 += 1;
                 if beg.is_null() {
                     beg = node;
                 }
@@ -216,6 +224,10 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
             prev = node;
             it = node.get_next_ptr().load(Relaxed);
         }
+
+        cnt.0 -= cnt.1;
+
+        cnt
     }
 
     #[maybe_async]
