@@ -28,22 +28,22 @@ pub unsafe trait IntrusiveListNode<'a>: IntrusiveForwardListNode<'a> {
 }
 
 /// Sample implementation of IntrusiveListNode
-pub struct IntrusiveListNodeImpl<T: Clone> {
+pub struct IntrusiveListNodeImpl<T> {
     next_ptr: AtomicPtr<()>,
     prev_ptr: AtomicPtr<()>,
     elem: T,
 }
-unsafe impl<'a, T: Clone> IntrusiveForwardListNode<'a> for IntrusiveListNodeImpl<T> {
-    type Target = T;
+unsafe impl<'a, T: 'a> IntrusiveForwardListNode<'a> for IntrusiveListNodeImpl<T> {
+    type Target = &'a T;
 
     fn get_next_ptr(&self) -> &AtomicPtr<()> {
         &self.next_ptr
     }
-    fn get_elem(&self) -> Self::Target {
-        self.elem.clone()
+    fn get_elem(&'a self) -> Self::Target {
+        &self.elem
     }
 }
-unsafe impl<'a, T: Clone> IntrusiveListNode<'a> for IntrusiveListNodeImpl<T> {
+unsafe impl<'a, T: 'a> IntrusiveListNode<'a> for IntrusiveListNodeImpl<T> {
     fn get_prev_ptr(&self) -> &AtomicPtr<()> {
         &self.prev_ptr
     }
