@@ -23,7 +23,7 @@ use crate::intrusive_forward_list::IntrusiveForwardListNode;
 /// `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
 /// ADD IT TO THE SAME LIST SIMULTANEOUSLY
 /// but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-pub unsafe trait IntrusiveListNode: IntrusiveForwardListNode {
+pub unsafe trait IntrusiveListNode<'a>: IntrusiveForwardListNode<'a> {
     fn get_prev_ptr(&self) -> &AtomicPtr<()>;
 }
 
@@ -33,7 +33,7 @@ pub struct IntrusiveListNodeImpl<T: Clone> {
     prev_ptr: AtomicPtr<()>,
     elem: T,
 }
-unsafe impl<T: Clone> IntrusiveForwardListNode for IntrusiveListNodeImpl<T> {
+unsafe impl<'a, T: Clone> IntrusiveForwardListNode<'a> for IntrusiveListNodeImpl<T> {
     type Target = T;
 
     fn get_next_ptr(&self) -> &AtomicPtr<()> {
@@ -43,7 +43,7 @@ unsafe impl<T: Clone> IntrusiveForwardListNode for IntrusiveListNodeImpl<T> {
         self.elem.clone()
     }
 }
-unsafe impl<T: Clone> IntrusiveListNode for IntrusiveListNodeImpl<T> {
+unsafe impl<'a, T: Clone> IntrusiveListNode<'a> for IntrusiveListNodeImpl<T> {
     fn get_prev_ptr(&self) -> &AtomicPtr<()> {
         &self.prev_ptr
     }
@@ -53,19 +53,19 @@ unsafe impl<T: Clone> IntrusiveListNode for IntrusiveListNodeImpl<T> {
 ///  - push and read can be done concurrently while allowing stale read;
 ///  - deletion can only be done sequentially when there is no
 ///    writer (excluding the thread doing deletion) or reader.
-pub struct IntrusiveList<'a, Node: IntrusiveListNode> {
+pub struct IntrusiveList<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: AtomicPtr<()>,
     last_ptr: AtomicPtr<()>,
     rwlock: RwLock<()>,
     phantom: PhantomData<&'a Node>,
 }
-impl<'a, Node: IntrusiveListNode> Default for IntrusiveList<'a, Node> {
+impl<'a, Node: IntrusiveListNode<'a>> Default for IntrusiveList<'a, Node> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, Node: IntrusiveListNode> IntrusiveList<'a, Node> {
+impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     pub fn new() -> Self {
         Self {
             first_ptr: AtomicPtr::new(ptr::null_mut()),
@@ -302,12 +302,12 @@ impl<'a, Node: IntrusiveListNode> IntrusiveList<'a, Node> {
         }.map(|_| {Splice::new(first, last)})
     }
 }
-pub struct Splice<'a, Node: IntrusiveListNode> {
+pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
     last_ptr: *mut (),
     phantom: PhantomData<&'a Node>,
 }
-impl<'a, Node: IntrusiveListNode> Splice<'a, Node> {
+impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     /// # Safety
     ///
     /// Assumes `first` and `last` is already linked, `first` must be to the
@@ -321,7 +321,7 @@ impl<'a, Node: IntrusiveListNode> Splice<'a, Node> {
         }
     }
 }
-impl<'a, Node: IntrusiveListNode> From<Splice<'a, Node>> for (&'a Node, &'a Node) {
+impl<'a, Node: IntrusiveListNode<'a>> From<Splice<'a, Node>> for (&'a Node, &'a Node) {
     fn from(splice: Splice<'a, Node>) -> Self {
         unsafe {(
             &* (splice.first_ptr as *mut Node as *const Node),
@@ -329,7 +329,7 @@ impl<'a, Node: IntrusiveListNode> From<Splice<'a, Node>> for (&'a Node, &'a Node
         )}
     }
 }
-impl<'a, Node: IntrusiveListNode> Iterator for Splice<'a, Node> {
+impl<'a, Node: IntrusiveListNode<'a>> Iterator for Splice<'a, Node> {
     type Item = &'a Node;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -357,7 +357,7 @@ impl<'a, Node: IntrusiveListNode> Iterator for Splice<'a, Node> {
         }
     }
 }
-impl<'a, Node: IntrusiveListNode> DoubleEndedIterator for Splice<'a, Node> {
+impl<'a, Node: IntrusiveListNode<'a>> DoubleEndedIterator for Splice<'a, Node> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.last_ptr.is_null() {
             return None;

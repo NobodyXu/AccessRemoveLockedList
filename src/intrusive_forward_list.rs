@@ -9,11 +9,10 @@ use concurrency_toolkit::atomic::AtomicPtr;
 ///
 /// __**YOU MUST NOT USE THE SAME NODE IN TWO LISTS SIMULTANEOUSLY OR
 /// ADD/REMOVE THE SAME NODE SIMULTANEOUSLY**__
-pub unsafe trait IntrusiveForwardListNode {
+pub unsafe trait IntrusiveForwardListNode<'a> {
     type Target;
 
     fn get_next_ptr(&self) -> &AtomicPtr<()>;
 
-    fn get_elem(&self) -> Self::Target;
+    fn get_elem(&'a self) -> Self::Target;
 }
-
