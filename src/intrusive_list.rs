@@ -189,7 +189,30 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
         true
     }
 
-    // TODO: remove_if
+    /// * `f` - return true to remove the node or false to keep it
+    #[maybe_async]
+    pub async fn remove_if(&self, mut f: impl FnMut(&'a Node) -> bool) {
+        let _write_guard = obtain_write_lock!(&self.rwlock);
+
+        let mut it = self.first_ptr.load(Ordering::Relaxed);
+
+        let mut prev: *const Node = ptr::null();
+        let mut beg: *const Node = ptr::null();
+
+        while !it.is_null() {
+            let node = unsafe { &* (it as *mut Node as *const Node) };
+            if f(node) {
+                if beg.is_null() {
+                    beg = node;
+                }
+            } else if !beg.is_null() {
+                unsafe { self.splice_impl(&* beg, &* prev).unwrap() };
+                beg = ptr::null();
+            }
+            prev = node;
+            it = node.get_next_ptr().load(Ordering::Relaxed);
+        }
+    }
 
     #[maybe_async]
     pub async fn clear(&self) {
@@ -212,6 +235,8 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
     ///    __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
+    ///
+    /// Must be called after obtained a write lock of `self.rwlock`.
     #[must_use]
     #[maybe_async]
     async unsafe fn splice_impl(
