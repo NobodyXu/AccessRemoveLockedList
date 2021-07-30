@@ -297,4 +297,54 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
 
         size
     }
+
+    /// Move all list nodes between `first` and `last` (inclusive) from `self`
+    /// and return them as a new `IntrusiveList`.
+    ///
+    /// # Safety
+    ///
+    ///  * `first` and `last` - Must be in this list!
+    ///    and, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
+    ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
+    #[maybe_async]
+    pub async unsafe fn splice(
+        &self,
+        first: &'a Node,
+        last: &'a Node
+    ) -> Self {
+        {
+            let _write_guard = obtain_write_lock!(&self.rwlock);
+
+            let prev_node = first.get_prev_ptr().load(R_ORD);
+            let next_node = last.get_next_ptr().load(R_ORD);
+
+            let ptr = if next_node.is_null() {
+                &self.last_ptr
+            } else {
+                let next_node = next_node as *mut Node;
+                (*next_node).get_prev_ptr()
+            };
+            assert_store_ptr(ptr, last as *const _ as *mut (), prev_node);
+
+            let ptr = if prev_node.is_null() {
+                &self.first_ptr
+            } else {
+                let prev_node = prev_node as *mut Node;
+                (*prev_node).get_next_ptr()
+            };
+            assert_store_ptr(ptr, first as *const _ as *mut (), next_node);
+
+            // TODO: Fix self.size
+            self.size.fetch_sub(2, RW_ORD);
+        }
+
+        let ret: Self = Default::default();
+
+        ret.first_ptr.store(first as *const _ as *mut(), W_ORD);
+        ret.last_ptr.store(last as *const _ as *mut(), W_ORD);
+        ret.size.store(2, W_ORD);
+
+        ret
+    }
 }
