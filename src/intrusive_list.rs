@@ -237,38 +237,31 @@ impl<'a, Node: IntrusiveListNode<T>, T> IntrusiveList<'a, Node, T> {
 
         let node = node as *const _ as *mut _;
 
-        if next_node.is_null() {
-            match self.last_ptr.compare_exchange_weak(node, prev_node, RW_ORD, R_ORD) {
-                Ok(_) => (),
-                Err(_) => {
-                    #[cfg(debug)]
-                    if !prev_node.is_null() {
-                        panic!(
-                            "node {:#?} belongs to another list other than {:#?}",
-                            node,
-                            self as *const _
-                        );
-                    }
-                    return false
-                },
-            }
+        let last_ptr = if next_node.is_null() {
+            &self.last_ptr
         } else {
             let next_node = next_node as *mut Node;
-            assert_store_ptr((*next_node).get_prev_ptr(), node, prev_node);
+            (*next_node).get_prev_ptr()
+        };
+        match last_ptr.compare_exchange_weak(node, prev_node, RW_ORD, R_ORD) {
+            Ok(_) => (),
+            Err(_) => return false,
         }
 
-        if prev_node.is_null() {
-            assert_store_ptr(&self.first_ptr, node, next_node);
+        let first_ptr = if prev_node.is_null() {
+            &self.first_ptr
         } else {
             let prev_node = prev_node as *mut Node;
-            assert_store_ptr((*prev_node).get_next_ptr(), node, next_node);
+            (*prev_node).get_next_ptr()
+        };
+        match first_ptr.compare_exchange_weak(node, next_node, RW_ORD, R_ORD) {
+            Ok(_) => (),
+            Err(_) => {
+                // Revert the change of last_ptr
+                assert_store_ptr(last_ptr, prev_node, node);
+                return false
+            },
         }
-
-        let node = &*(node as *const Node);
-
-        let null = ptr::null_mut();
-        assert_store_ptr(&node.get_prev_ptr(), prev_node, null);
-        assert_store_ptr(&node.get_next_ptr(), next_node, null);
 
         true
     }
