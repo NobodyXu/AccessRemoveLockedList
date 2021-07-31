@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 use core::ptr;
-use core::iter::{Iterator, DoubleEndedIterator};
+use core::iter::{Iterator, IntoIterator, DoubleEndedIterator};
 use core::convert::From;
 
 use concurrency_toolkit::maybe_async;
@@ -471,6 +471,15 @@ impl<'a, Node: IntrusiveListNode<'a>> DoubleEndedIterator for Splice<'a, Node> {
         }
 
         Some(curr_node)
+    }
+}
+
+impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a, Node> {
+    type Item = &'a Node;
+    type IntoIter = IntrusiveListIterator<'a, 'b, Node>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter::new(self)
     }
 }
 
