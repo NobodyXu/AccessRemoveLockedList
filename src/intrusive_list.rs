@@ -159,6 +159,43 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         }
     }
 
+    #[maybe_async]
+    pub async fn push_front_splice(&self, splice: Splice<'a, Node>) {
+        let _read_guard = obtain_read_lock!(&self.rwlock);
+        let null = ptr::null_mut();
+
+        let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
+        let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
+
+        first_node.get_prev_ptr().store(null, W_ORD);
+
+        loop {
+            let first = self.first_ptr.load(R_ORD);
+
+            last_node.get_next_ptr().store(first, W_ORD);
+
+            let last_node  = splice.last_ptr;
+            let first_node = splice.first_ptr;
+
+            if first.is_null() {
+                match self.first_ptr
+                    .compare_exchange_weak(null, first_node, RW_ORD, R_ORD)
+                {
+                    Ok(_) => break assert_store_ptr(&self.last_ptr, null, last_node),
+                    Err(_) => continue,
+                }
+            } else {
+                match unsafe { &*(first as *mut Node) }
+                    .get_prev_ptr()
+                    .compare_exchange_weak(null, last_node, RW_ORD, R_ORD)
+                {
+                    Ok(_) => break assert_store_ptr(&self.first_ptr, first, first_node),
+                    Err(_) => continue,
+                }
+            }
+        }
+    }
+
     // All methods below are removal methods, which takes the write lock:
 
     /// Returns `true` if `node` is indeed inside `self`, otherwise `false`.
