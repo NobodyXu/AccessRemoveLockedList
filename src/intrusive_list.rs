@@ -97,13 +97,14 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 
     #[maybe_async]
     pub async fn push_back_splice(&self, splice: Splice<'a, Node>) {
-        let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
 
         let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
         let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
 
         last_node.get_next_ptr().store(null, W_ORD);
+
+        let _read_guard = obtain_read_lock!(&self.rwlock);
 
         loop {
             let last = self.last_ptr.load(R_ORD);
@@ -134,13 +135,14 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 
     #[maybe_async]
     pub async fn push_front_splice(&self, splice: Splice<'a, Node>) {
-        let _read_guard = obtain_read_lock!(&self.rwlock);
         let null = ptr::null_mut();
 
         let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
         let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
 
         first_node.get_prev_ptr().store(null, W_ORD);
+
+        let _read_guard = obtain_read_lock!(&self.rwlock);
 
         loop {
             let first = self.first_ptr.load(R_ORD);
