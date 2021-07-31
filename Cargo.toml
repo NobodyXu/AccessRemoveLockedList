@@ -8,7 +8,6 @@ edition = "2018"
 
 [features]
 default = ["concurrency_toolkit/default"]
-async = ["concurrency_toolkit/async_tokio"]
 permutation_testing = ["concurrency_toolkit/permutation_testing"]
 
 [dependencies]
