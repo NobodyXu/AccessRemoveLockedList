@@ -249,7 +249,8 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///
     /// # Safety
     ///
-    ///  * `first`, `last` - `first` must be to the left of the `last` and
+    ///  * `first`, `last` - `first` must be to the left of the `last` 
+    ///    (`first` can be the same node as `last`) and
     ///    __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
@@ -286,13 +287,17 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
             (*prev_node).get_next_ptr()
         };
         let first = first as *const _ as *mut ();
-        match first_ptr.compare_exchange_weak(first, next_node, Relaxed, Relaxed) {
-            Ok(_) => (),
-            Err(_) => {
-                // Revert the change of last_ptr
-                assert_store_ptr_relaxed(last_ptr, prev_node, last);
-                return None
-            },
+        if ptr::eq(first, last) {
+            assert_store_ptr_relaxed(first_ptr, first, next_node);
+        } else {
+            match first_ptr.compare_exchange_weak(first, next_node, Relaxed, Relaxed) {
+                Ok(_) => (),
+                Err(_) => {
+                    // Revert the change of last_ptr
+                    assert_store_ptr_relaxed(last_ptr, prev_node, last);
+                    return None
+                },
+            }
         }
 
         Some(())
