@@ -3,10 +3,7 @@ use core::ptr;
 use core::iter::{Iterator, IntoIterator, DoubleEndedIterator};
 use core::convert::From;
 
-use concurrency_toolkit::maybe_async;
-use concurrency_toolkit::sync::{RwLock, RwLockReadGuard};
 use concurrency_toolkit::atomic::{AtomicPtr, Ordering};
-use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
 
 use crate::utility::*;
 use crate::intrusive_forward_list::IntrusiveForwardListNode;
@@ -53,10 +50,11 @@ unsafe impl<'a, T: 'a> IntrusiveListNode<'a> for IntrusiveListNodeImpl<T> {
 ///  - push and read can be done concurrently while allowing stale read;
 ///  - deletion can only be done sequentially when there is no
 ///    writer (excluding the thread doing deletion) or reader.
+/// 
+/// It is suggested to use this with `RwLock`
 pub struct IntrusiveList<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: AtomicPtr<()>,
     last_ptr: AtomicPtr<()>,
-    rwlock: RwLock<()>,
     phantom: PhantomData<&'a Node>,
 }
 impl<'a, Node: IntrusiveListNode<'a>> Default for IntrusiveList<'a, Node> {
@@ -70,7 +68,6 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         Self {
             first_ptr: AtomicPtr::new(ptr::null_mut()),
             last_ptr: AtomicPtr::new(ptr::null_mut()),
-            rwlock: RwLock::new(()),
             phantom: PhantomData,
         }
     }
@@ -80,9 +77,8 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-    #[maybe_async]
-    pub async unsafe fn push_back(&self, node: &'a Node) {
-        self.push_back_splice(Splice::new_unchecked(node, node)).await;
+    pub unsafe fn push_back(&self, node: &'a Node) {
+        self.push_back_splice(Splice::new_unchecked(node, node));
     }
 
     /// # Safety
@@ -90,21 +86,17 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-    #[maybe_async]
-    pub async unsafe fn push_front(&self, node: &'a Node) {
-        self.push_front_splice(Splice::new_unchecked(node, node)).await;
+    pub unsafe fn push_front(&self, node: &'a Node) {
+        self.push_front_splice(Splice::new_unchecked(node, node));
     }
 
-    #[maybe_async]
-    pub async fn push_back_splice(&self, splice: Splice<'a, Node>) {
+    pub fn push_back_splice(&self, splice: Splice<'a, Node>) {
         let null = ptr::null_mut();
 
         let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
         let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
 
         last_node.get_next_ptr().store(null, W_ORD);
-
-        let _read_guard = obtain_read_lock!(&self.rwlock).unwrap();
 
         loop {
             let last = self.last_ptr.load(R_ORD);
@@ -133,16 +125,13 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         }
     }
 
-    #[maybe_async]
-    pub async fn push_front_splice(&self, splice: Splice<'a, Node>) {
+    pub fn push_front_splice(&self, splice: Splice<'a, Node>) {
         let null = ptr::null_mut();
 
         let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
         let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
 
         first_node.get_prev_ptr().store(null, W_ORD);
-
-        let _read_guard = obtain_read_lock!(&self.rwlock).unwrap();
 
         loop {
             let first = self.first_ptr.load(R_ORD);
@@ -171,8 +160,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         }
     }
 
-    #[maybe_async]
-    pub async fn iter(&self) -> IntrusiveListIterator<'a, '_, Node> {
+    pub fn iter(&self) -> IntrusiveListIterator<'a, '_, Node> {
         IntrusiveListIterator::new(self)
     }
 
@@ -188,24 +176,15 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///    and, __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-    #[maybe_async]
-    pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
-        {
-            let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
-            self.splice_impl(node, node)
-        }.is_some()
+    pub unsafe fn remove_node(&mut self, node: &'a Node) -> bool {
+        self.splice_impl(node, node).is_some()
     }
 
     ///  * `f` - return true to remove the node or false to keep it
     /// 
     /// Return (# num of elements left, # num of elements removed)
-    #[maybe_async]
-    pub async fn remove_if(&self, mut f: impl FnMut(&'a Node) -> bool)
-        -> (usize, usize)
-    {
+    pub fn remove_if(&mut self, mut f: impl FnMut(&'a Node) -> bool) -> (usize, usize) {
         use Ordering::Relaxed;
-
-        let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
 
         let mut it = self.first_ptr.load(Relaxed);
 
@@ -235,11 +214,8 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         cnt
     }
 
-    #[maybe_async]
-    pub async fn clear(&self) {
+    pub fn clear(&mut self) {
         use Ordering::Relaxed;
-
-        let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
 
         let null = ptr::null_mut();
 
@@ -262,7 +238,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///
     /// Must be called after obtained a write lock of `self.rwlock`.
     #[must_use]
-    unsafe fn splice_impl(&self, first: &'a Node, last: &'a Node) -> Option<()> {
+    unsafe fn splice_impl(&mut self, first: &'a Node, last: &'a Node) -> Option<()> {
         use Ordering::Relaxed;
 
         let prev_node = first.get_prev_ptr().load(Relaxed);
@@ -315,16 +291,12 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[must_use]
-    #[maybe_async]
-    pub async unsafe fn splice(
-        &self,
+    pub unsafe fn splice(
+        &mut self,
         first: &'a Node,
         last: &'a Node
     ) -> Option<Splice<'a, Node>> {
-        {
-            let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
-            self.splice_impl(first, last)
-        }.map(|_| {Splice::new_unchecked(first, last)})
+        self.splice_impl(first, last).map(|_| {Splice::new_unchecked(first, last)})
     }
 }
 
@@ -485,16 +457,14 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a,
 
 pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
     splice: Splice<'a, Node>,
-    _read_guard: RwLockReadGuard<'b, ()>,
+    phantom: PhantomData<&'b IntrusiveList<'a, Node>>
 }
 impl<'a, 'b, Node: IntrusiveListNode<'a>> IntrusiveListIterator<'a, 'b, Node> {
-    #[maybe_async]
-    pub(crate) async fn new(list: &'b IntrusiveList<'a, Node>) -> Self {
-        let _read_guard = obtain_read_lock!(&list.rwlock).unwrap();
+    pub(crate) fn new(list: &'b IntrusiveList<'a, Node>) -> Self {
         let splice = loop {
             let first_ptr = list.first_ptr.load(R_ORD);
             let last_ptr  = list.last_ptr .load(R_ORD);
-            
+
             if (first_ptr.is_null() && last_ptr.is_null()) ||
                ( (!first_ptr.is_null()) && (!last_ptr.is_null()) )
             {
@@ -507,7 +477,7 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>> IntrusiveListIterator<'a, 'b, Node> {
         };
         Self {
             splice,
-            _read_guard,
+            phantom: PhantomData,
         }
     }
 }
