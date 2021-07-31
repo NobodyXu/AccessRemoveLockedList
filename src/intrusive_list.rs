@@ -386,13 +386,13 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
         first_node.get_prev_ptr().store(null, Relaxed);
         last_node.get_next_ptr().store(first, Relaxed);
 
+        self.first_ptr = splice.first_ptr;
         if first.is_null() {
             self.last_ptr = splice.last_ptr;
         } else {
             let first = unsafe { &*(first as *mut Node as *const Node) };
             first.get_prev_ptr().store(splice.last_ptr, Relaxed);
         }
-        self.first_ptr = splice.first_ptr;
     }
 
     /// # Safety
@@ -417,13 +417,13 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
         first_node.get_prev_ptr().store(last, Relaxed);
         last_node.get_next_ptr().store(null, Relaxed);
 
+        self.last_ptr = splice.last_ptr;
         if last.is_null() {
             self.first_ptr = splice.first_ptr;
         } else {
             let last = unsafe { &*(last as *mut Node as *const Node) };
             last.get_next_ptr().store(splice.first_ptr, Relaxed);
         }
-        self.last_ptr = splice.last_ptr;
     }
 }
 impl<'a, Node: IntrusiveListNode<'a>> From<Splice<'a, Node>> for (&'a Node, &'a Node) {
