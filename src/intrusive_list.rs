@@ -353,6 +353,10 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.first_ptr.is_null()
+    }
+
     /// # Safety
     ///
     ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
