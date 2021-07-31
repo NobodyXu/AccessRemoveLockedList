@@ -20,7 +20,7 @@ use crate::intrusive_forward_list::IntrusiveForwardListNode;
 ///
 /// # Safety
 ///
-/// `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+/// `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
 /// ADD IT TO THE SAME LIST SIMULTANEOUSLY
 /// but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
 pub unsafe trait IntrusiveListNode<'a>: IntrusiveForwardListNode<'a> {
@@ -79,7 +79,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 
     /// # Safety
     ///
-    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
@@ -89,7 +89,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 
     /// # Safety
     ///
-    ///  * `node` -  __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
@@ -180,7 +180,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///  * `node` - it must be in one of the following state:
     ///     - `node.get_next_ptr().is_null() && node.get_prev_ptr().is_null()`
     ///     - `node` is added to `self`
-    ///    and, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    and, __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
@@ -251,7 +251,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///
     ///  * `first`, `last` - `first` must be to the left of the `last` 
     ///    (`first` can be the same node as `last`) and
-    ///    __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     ///
@@ -311,7 +311,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     /// # Safety
     ///
     ///  * `first`, `last` - `first` must be to the left of the `last` and
-    ///    __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    ///    __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[must_use]
@@ -344,7 +344,7 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     /// left of the `last` (`first` and `last` can be the same node)
     /// and and the link must not be modified after `Splice` is created.
     ///
-    /// Also, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    /// Also, __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
     /// ADD IT TO THE SAME LIST SIMULTANEOUSLY
     /// but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     pub unsafe fn new_unchecked(first: &'a Node, last: &'a Node) -> Self {
@@ -362,6 +362,15 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
             last_ptr:  null,
             phantom: PhantomData,
         }
+    }
+
+    /// # Safety
+    ///
+    ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
+    ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
+    ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
+    pub unsafe fn push_front(&mut self, node: &'a Node) {
+        self.push_front_splice(Splice::new_unchecked(node, node))
     }
 
     pub fn push_front_splice(&mut self, splice: Self) {
