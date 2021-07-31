@@ -332,6 +332,11 @@ pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     last_ptr: *mut (),
     phantom: PhantomData<&'a Node>,
 }
+impl<'a, Node: IntrusiveListNode<'a>> Default for Splice<'a, Node> {
+    fn default() -> Self {
+        Self::new_empty()
+    }
+}
 impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     /// # Safety
     ///
@@ -346,6 +351,15 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
         Self {
             first_ptr: first as *const _ as *mut (),
             last_ptr:  last  as *const _ as *mut (),
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn new_empty() -> Self {
+        let null = ptr::null_mut();
+        Self {
+            first_ptr: null,
+            last_ptr:  null,
             phantom: PhantomData,
         }
     }
