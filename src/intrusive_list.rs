@@ -160,7 +160,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
                     Err(_) => continue,
                 }
             } else {
-                match unsafe { &*(first as *mut Node) }
+                match unsafe { &*(first as *mut Node as *const Node) }
                     .get_prev_ptr()
                     .compare_exchange_weak(null, last_node, RW_ORD, R_ORD)
                 {
@@ -362,6 +362,28 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
             last_ptr:  null,
             phantom: PhantomData,
         }
+    }
+
+    pub fn push_front_splice(&mut self, splice: Self) {
+        use Ordering::Relaxed;
+
+        let null = ptr::null_mut();
+
+        let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
+        let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
+
+        let first = self.first_ptr;
+
+        first_node.get_prev_ptr().store(null, Relaxed);
+        last_node.get_next_ptr().store(first, Relaxed);
+
+        if self.first_ptr.is_null() {
+            self.last_ptr = splice.last_ptr;
+        } else {
+            let first = unsafe { &*(first as *mut Node as *const Node) };
+            first.get_prev_ptr().store(splice.last_ptr, Relaxed);
+        }
+        self.first_ptr = splice.first_ptr;
     }
 }
 impl<'a, Node: IntrusiveListNode<'a>> From<Splice<'a, Node>> for (&'a Node, &'a Node) {
