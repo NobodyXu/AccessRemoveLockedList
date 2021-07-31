@@ -400,7 +400,7 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
 
         let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
 
-        let last = splice.last_ptr;
+        let last = self.last_ptr;
 
         first_node.get_prev_ptr().store(last, Relaxed);
 
