@@ -311,8 +311,8 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     /// # Safety
     ///
     /// Assumes `first` and `last` is already linked, `first` must be to the
-    /// left of the `last` and and the link must not be modified
-    /// after `Splice` is created.
+    /// left of the `last` (`first` and `last` can be the same node)
+    /// and and the link must not be modified after `Splice` is created.
     pub unsafe fn new(first: &'a Node, last: &'a Node) -> Self {
         Self {
             first_ptr: first as *const _ as *mut (),
