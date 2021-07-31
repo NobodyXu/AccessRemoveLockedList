@@ -4,7 +4,7 @@ use core::iter::{Iterator, DoubleEndedIterator};
 use core::convert::From;
 
 use concurrency_toolkit::maybe_async;
-use concurrency_toolkit::sync::RwLock;
+use concurrency_toolkit::sync::{RwLock, RwLockReadGuard};
 use concurrency_toolkit::atomic::{AtomicPtr, Ordering};
 use concurrency_toolkit::{obtain_read_lock, obtain_write_lock};
 
@@ -104,7 +104,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 
         last_node.get_next_ptr().store(null, W_ORD);
 
-        let _read_guard = obtain_read_lock!(&self.rwlock);
+        let _read_guard = obtain_read_lock!(&self.rwlock).unwrap();
 
         loop {
             let last = self.last_ptr.load(R_ORD);
@@ -142,7 +142,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 
         first_node.get_prev_ptr().store(null, W_ORD);
 
-        let _read_guard = obtain_read_lock!(&self.rwlock);
+        let _read_guard = obtain_read_lock!(&self.rwlock).unwrap();
 
         loop {
             let first = self.first_ptr.load(R_ORD);
@@ -188,7 +188,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     #[maybe_async]
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
         {
-            let _write_guard = obtain_write_lock!(&self.rwlock);
+            let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
             self.splice_impl(node, node)
         }.is_some()
     }
@@ -202,7 +202,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     {
         use Ordering::Relaxed;
 
-        let _write_guard = obtain_write_lock!(&self.rwlock);
+        let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
 
         let mut it = self.first_ptr.load(Relaxed);
 
@@ -236,7 +236,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     pub async fn clear(&self) {
         use Ordering::Relaxed;
 
-        let _write_guard = obtain_write_lock!(&self.rwlock);
+        let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
 
         let null = ptr::null_mut();
 
@@ -319,11 +319,12 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         last: &'a Node
     ) -> Option<Splice<'a, Node>> {
         {
-            let _write_guard = obtain_write_lock!(&self.rwlock);
+            let _write_guard = obtain_write_lock!(&self.rwlock).unwrap();
             self.splice_impl(first, last)
         }.map(|_| {Splice::new_unchecked(first, last)})
     }
 }
+
 pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
     last_ptr: *mut (),
