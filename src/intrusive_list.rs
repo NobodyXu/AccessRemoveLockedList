@@ -75,8 +75,6 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         }
     }
 
-    // TODO: Implements push_*_splice
-
     /// # Safety
     ///
     ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
@@ -171,6 +169,8 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         }
     }
 
+    // TODO: Implements iterator
+
     // All methods below are removal methods, which takes the write lock:
 
     /// Returns `true` if `node` is indeed inside `self`, otherwise `false`.
@@ -187,7 +187,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
-            self.splice_impl(node, node).await
+            self.splice_impl(node, node)
         }.is_some()
     }
 
@@ -218,7 +218,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
                     beg = node;
                 }
             } else if !beg.is_null() {
-                unsafe { self.splice_impl(&* beg, &* prev).await.unwrap() };
+                unsafe { self.splice_impl(&* beg, &* prev).unwrap() };
                 beg = ptr::null();
             }
             prev = node;
@@ -257,12 +257,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///
     /// Must be called after obtained a write lock of `self.rwlock`.
     #[must_use]
-    #[maybe_async]
-    async unsafe fn splice_impl(
-        &self,
-        first: &'a Node,
-        last: &'a Node
-    ) -> Option<()> {
+    unsafe fn splice_impl(&self, first: &'a Node, last: &'a Node) -> Option<()> {
         use Ordering::Relaxed;
 
         let prev_node = first.get_prev_ptr().load(Relaxed);
@@ -323,7 +318,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ) -> Option<Splice<'a, Node>> {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
-            self.splice_impl(first, last).await
+            self.splice_impl(first, last)
         }.map(|_| {Splice::new_unchecked(first, last)})
     }
 }
