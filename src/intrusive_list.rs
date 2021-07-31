@@ -30,6 +30,17 @@ pub struct IntrusiveListNodeImpl<T> {
     prev_ptr: AtomicPtr<()>,
     elem: T,
 }
+impl<T> IntrusiveListNodeImpl<T> {
+    pub fn new(elem: T) -> Self {
+        let null = ptr::null_mut();
+
+        Self {
+            next_ptr: AtomicPtr::new(null),
+            prev_ptr: AtomicPtr::new(null),
+            elem,
+        }
+    }
+}
 unsafe impl<'a, T: 'a> IntrusiveForwardListNode<'a> for IntrusiveListNodeImpl<T> {
     type Target = &'a T;
 
