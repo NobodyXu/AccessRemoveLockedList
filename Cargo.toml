@@ -12,4 +12,6 @@ async = ["concurrency_toolkit/async_tokio"]
 permutation_testing = ["concurrency_toolkit/permutation_testing"]
 
 [dependencies]
+# Since concurrency_toolkit only allows one feature enabled at a time, 
+# use default-features = false to disable its default feature (std sync)
 concurrency_toolkit = { version = "0.1.2", default-features = false }
