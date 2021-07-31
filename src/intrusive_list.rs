@@ -25,6 +25,7 @@ pub unsafe trait IntrusiveListNode<'a>: IntrusiveForwardListNode<'a> {
 }
 
 /// Sample implementation of IntrusiveListNode
+#[derive(Debug)]
 pub struct IntrusiveListNodeImpl<T> {
     next_ptr: AtomicPtr<()>,
     prev_ptr: AtomicPtr<()>,
