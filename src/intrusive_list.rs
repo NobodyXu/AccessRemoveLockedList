@@ -94,32 +94,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
     pub async unsafe fn push_front(&self, node: &'a Node) {
-        let _read_guard = obtain_read_lock!(&self.rwlock);
-        let null = ptr::null_mut();
-
-        node.get_prev_ptr().store(null, W_ORD);
-
-        loop {
-            let first = self.first_ptr.load(R_ORD);
-
-            node.get_next_ptr().store(first, W_ORD);
-
-            let node = node as *const _ as *mut ();
-            if first.is_null() {
-                match self.first_ptr.compare_exchange_weak(null, node, RW_ORD, R_ORD) {
-                    Ok(_) => break assert_store_ptr(&self.last_ptr, null, node),
-                    Err(_) => continue,
-                }
-            } else {
-                match (*(first as *mut Node))
-                    .get_prev_ptr()
-                    .compare_exchange_weak(null, node, RW_ORD, R_ORD)
-                {
-                    Ok(_) => break assert_store_ptr(&self.first_ptr, first, node),
-                    Err(_) => continue,
-                }
-            }
-        }
+        self.push_front_splice(Splice::new_unchecked(node, node)).await;
     }
 
     #[maybe_async]
