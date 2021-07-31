@@ -316,6 +316,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     }
 }
 
+#[derive(Debug)]
 pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
     last_ptr: *mut (),
