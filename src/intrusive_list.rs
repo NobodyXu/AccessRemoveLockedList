@@ -160,35 +160,10 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
-        use Ordering::Relaxed;
-
-        let _write_guard = obtain_write_lock!(&self.rwlock);
-
-        let prev_node = node.get_prev_ptr().load(Relaxed);
-        let next_node = node.get_next_ptr().load(Relaxed);
-
-        let node = node as *const _ as *mut _;
-
-        let last_ptr = if next_node.is_null() {
-            &self.last_ptr
-        } else {
-            let next_node = next_node as *mut Node;
-            (*next_node).get_prev_ptr()
-        };
-        match last_ptr.compare_exchange_weak(node, prev_node, Relaxed, Relaxed) {
-            Ok(_) => (),
-            Err(_) => return false,
-        }
-
-        let first_ptr = if prev_node.is_null() {
-            &self.first_ptr
-        } else {
-            let prev_node = prev_node as *mut Node;
-            (*prev_node).get_next_ptr()
-        };
-        assert_store_ptr_relaxed(first_ptr, node, next_node);
-
-        true
+        {
+            let _write_guard = obtain_write_lock!(&self.rwlock);
+            self.splice_impl(node, node)
+        }.is_some()
     }
 
     ///  * `f` - return true to remove the node or false to keep it
