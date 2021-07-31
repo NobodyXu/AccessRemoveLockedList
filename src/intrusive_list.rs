@@ -84,7 +84,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     #[maybe_async]
     pub async unsafe fn push_back(&self, node: &'a Node) {
-        self.push_back_splice(Splice::new(node, node)).await;
+        self.push_back_splice(Splice::new_unchecked(node, node)).await;
     }
 
     /// # Safety
@@ -312,7 +312,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
             self.splice_impl(first, last).await
-        }.map(|_| {Splice::new(first, last)})
+        }.map(|_| {Splice::new_unchecked(first, last)})
     }
 }
 pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
@@ -330,7 +330,7 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     /// Also, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
     /// ADD IT TO THE SAME LIST SIMULTANEOUSLY
     /// but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
-    pub unsafe fn new(first: &'a Node, last: &'a Node) -> Self {
+    pub unsafe fn new_unchecked(first: &'a Node, last: &'a Node) -> Self {
         Self {
             first_ptr: first as *const _ as *mut (),
             last_ptr:  last  as *const _ as *mut (),
