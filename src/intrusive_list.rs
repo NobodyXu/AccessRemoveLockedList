@@ -352,6 +352,10 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     /// Assumes `first` and `last` is already linked, `first` must be to the
     /// left of the `last` (`first` and `last` can be the same node)
     /// and and the link must not be modified after `Splice` is created.
+    ///
+    /// Also, __**YOU MUST NOT USE IT IN TWO LISTS SIMULTANEOUSLY OR
+    /// ADD IT TO THE SAME LIST SIMULTANEOUSLY
+    /// but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
     pub unsafe fn new(first: &'a Node, last: &'a Node) -> Self {
         Self {
             first_ptr: first as *const _ as *mut (),
