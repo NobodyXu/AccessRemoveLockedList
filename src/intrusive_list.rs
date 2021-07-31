@@ -175,7 +175,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     pub async unsafe fn remove_node(&self, node: &'a Node) -> bool {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
-            self.splice_impl(node, node)
+            self.splice_impl(node, node).await
         }.is_some()
     }
 
@@ -206,7 +206,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
                     beg = node;
                 }
             } else if !beg.is_null() {
-                unsafe { self.splice_impl(&* beg, &* prev).unwrap() };
+                unsafe { self.splice_impl(&* beg, &* prev).await.unwrap() };
                 beg = ptr::null();
             }
             prev = node;
@@ -311,7 +311,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     ) -> Option<Splice<'a, Node>> {
         {
             let _write_guard = obtain_write_lock!(&self.rwlock);
-            self.splice_impl(first, last)
+            self.splice_impl(first, last).await
         }.map(|_| {Splice::new(first, last)})
     }
 }
