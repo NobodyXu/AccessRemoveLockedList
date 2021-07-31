@@ -171,7 +171,10 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
         }
     }
 
-    // TODO: Implements iterator
+    #[maybe_async]
+    pub async fn iter(&self) -> IntrusiveListIterator<'a, '_, Node> {
+        IntrusiveListIterator::new(self)
+    }
 
     // All methods below are removal methods, which takes the write lock:
 
@@ -468,5 +471,54 @@ impl<'a, Node: IntrusiveListNode<'a>> DoubleEndedIterator for Splice<'a, Node> {
         }
 
         Some(curr_node)
+    }
+}
+
+pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
+    splice: Splice<'a, Node>,
+    _read_guard: RwLockReadGuard<'b, ()>,
+}
+impl<'a, 'b, Node: IntrusiveListNode<'a>> IntrusiveListIterator<'a, 'b, Node> {
+    #[maybe_async]
+    pub(crate) async fn new(list: &'b IntrusiveList<'a, Node>) -> Self {
+        let _read_guard = obtain_read_lock!(&list.rwlock).unwrap();
+        let splice = loop {
+            let first_ptr = list.first_ptr.load(R_ORD);
+            let last_ptr  = list.last_ptr .load(R_ORD);
+            
+            if (first_ptr.is_null() && last_ptr.is_null()) ||
+               ( (!first_ptr.is_null()) && (!last_ptr.is_null()) )
+            {
+                break Splice {
+                    first_ptr,
+                    last_ptr,
+                    phantom: PhantomData
+                }
+            }
+        };
+        Self {
+            splice,
+            _read_guard,
+        }
+    }
+}
+impl<'a, 'b, Node: IntrusiveListNode<'a>>
+    Iterator for IntrusiveListIterator<'a, 'b, Node>
+{
+    type Item = &'a Node;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.splice.next()
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        self.splice.last()
+    }
+}
+impl<'a, 'b, Node: IntrusiveListNode<'a>>
+    DoubleEndedIterator for IntrusiveListIterator<'a, 'b, Node>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.splice.next_back()
     }
 }
