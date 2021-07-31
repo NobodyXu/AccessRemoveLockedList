@@ -41,6 +41,11 @@ impl<T> IntrusiveListNodeImpl<T> {
         }
     }
 }
+impl<T: Default> Default for IntrusiveListNodeImpl<T> {
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}
 unsafe impl<'a, T: 'a> IntrusiveForwardListNode<'a> for IntrusiveListNodeImpl<T> {
     type Target = &'a T;
 
