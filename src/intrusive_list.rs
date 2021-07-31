@@ -376,14 +376,10 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     pub fn push_front_splice(&mut self, splice: Self) {
         use Ordering::Relaxed;
 
-        let null = ptr::null_mut();
-
-        let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
-        let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
+        let last_node = unsafe { &*(splice.last_ptr as *mut Node as *const Node) };
 
         let first = self.first_ptr;
 
-        first_node.get_prev_ptr().store(null, Relaxed);
         last_node.get_next_ptr().store(first, Relaxed);
 
         self.first_ptr = splice.first_ptr;
@@ -407,15 +403,11 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
     pub fn push_back_splice(&mut self, splice: Self) {
         use Ordering::Relaxed;
 
-        let null = ptr::null_mut();
-
-        let last_node  = unsafe { &*(splice.last_ptr  as *mut Node as *const Node) };
         let first_node = unsafe { &*(splice.first_ptr as *mut Node as *const Node) };
 
         let last = splice.last_ptr;
 
         first_node.get_prev_ptr().store(last, Relaxed);
-        last_node.get_next_ptr().store(null, Relaxed);
 
         self.last_ptr = splice.last_ptr;
         if last.is_null() {
