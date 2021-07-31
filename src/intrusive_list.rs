@@ -395,6 +395,15 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
         self.first_ptr = splice.first_ptr;
     }
 
+    /// # Safety
+    ///
+    ///  * `node` -  __**YOU MUST NOT USE IT IN OTHER LISTS/SPLICES SIMULTANEOUSLY OR
+    ///    ADD IT TO THE SAME LIST SIMULTANEOUSLY
+    ///    but you can REMOVE IT FROM THE SAME LIST SIMULTANEOUSLY**__.
+    pub unsafe fn push_back(&mut self, node: &'a Node) {
+        self.push_back_splice(Splice::new_unchecked(node, node))
+    }
+
     pub fn push_back_splice(&mut self, splice: Self) {
         use Ordering::Relaxed;
 
