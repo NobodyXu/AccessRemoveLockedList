@@ -1,4 +1,3 @@
-extern crate once_cell;
 pub extern crate concurrency_toolkit;
 
 mod utility;

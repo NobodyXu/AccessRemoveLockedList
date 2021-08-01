@@ -539,8 +539,6 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>>
 
 #[cfg(test)]
 mod tests {
-    use once_cell::sync::Lazy;
-
     use concurrency_toolkit::run_test;
     use super::*;
 
