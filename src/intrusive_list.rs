@@ -412,6 +412,10 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
             last.get_next_ptr().store(splice.first_ptr, Relaxed);
         }
     }
+
+    pub fn iter(&self) -> IntrusiveListIterator<'a, '_, Node> {
+        IntrusiveListIterator::from_splice(self)
+    }
 }
 impl<'a, Node: IntrusiveListNode<'a>>
     From<Splice<'a, Node>> for Option<(&'a Node, &'a Node)>
@@ -428,7 +432,63 @@ impl<'a, Node: IntrusiveListNode<'a>>
         }
     }
 }
-impl<'a, Node: IntrusiveListNode<'a>> Iterator for Splice<'a, Node> {
+
+impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b Splice<'a, Node> {
+    type Item = &'a Node;
+    type IntoIter = IntrusiveListIterator<'a, 'b, Node>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter::from_splice(self)
+    }
+}
+
+impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a, Node> {
+    type Item = &'a Node;
+    type IntoIter = IntrusiveListIterator<'a, 'b, Node>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter::from_list(self)
+    }
+}
+
+pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
+    first_ptr: * mut (),
+    last_ptr: *mut (),
+    phantom0: PhantomData<&'a Node>,
+    phantom1: PhantomData<&'b ()>,
+}
+impl<'a, 'b, Node: IntrusiveListNode<'a>> IntrusiveListIterator<'a, 'b, Node> {
+    pub(crate) fn from_list(list: &'b IntrusiveList<'a, Node>) -> Self {
+        loop {
+            let first_ptr = list.first_ptr.load(R_ORD);
+            let last_ptr  = list.last_ptr .load(R_ORD);
+
+            if (first_ptr.is_null() && last_ptr.is_null()) ||
+               ( (!first_ptr.is_null()) && (!last_ptr.is_null()) )
+            {
+                break Self {
+                    first_ptr,
+                    last_ptr,
+                    phantom0: PhantomData,
+                    phantom1: PhantomData,
+                }
+            }
+        }
+    }
+
+    pub(crate) fn from_splice(splice: &'b Splice<'a, Node>) -> Self {
+        Self {
+            first_ptr: splice.first_ptr,
+            last_ptr:  splice.last_ptr,
+            phantom0: PhantomData,
+            phantom1: PhantomData,
+        }
+    }
+}
+
+impl<'a, 'b, Node: IntrusiveListNode<'a>>
+    Iterator for IntrusiveListIterator<'a, 'b, Node>
+{
     type Item = &'a Node;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -456,7 +516,9 @@ impl<'a, Node: IntrusiveListNode<'a>> Iterator for Splice<'a, Node> {
         }
     }
 }
-impl<'a, Node: IntrusiveListNode<'a>> DoubleEndedIterator for Splice<'a, Node> {
+impl<'a, 'b, Node: IntrusiveListNode<'a>>
+    DoubleEndedIterator for IntrusiveListIterator<'a, 'b, Node>
+{
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.last_ptr.is_null() {
             return None;
