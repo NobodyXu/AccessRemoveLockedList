@@ -178,7 +178,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     }
 
     pub fn iter(&self) -> IntrusiveListIterator<'a, '_, Node> {
-        IntrusiveListIterator::new(self)
+        IntrusiveListIterator::from_list(self)
     }
 
     // All methods below are removal methods, which takes the write lock:
@@ -480,7 +480,7 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a,
     type IntoIter = IntrusiveListIterator<'a, 'b, Node>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter::new(self)
+        Self::IntoIter::from_list(self)
     }
 }
 
@@ -489,7 +489,7 @@ pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
     phantom: PhantomData<&'b IntrusiveList<'a, Node>>
 }
 impl<'a, 'b, Node: IntrusiveListNode<'a>> IntrusiveListIterator<'a, 'b, Node> {
-    pub(crate) fn new(list: &'b IntrusiveList<'a, Node>) -> Self {
+    pub(crate) fn from_list(list: &'b IntrusiveList<'a, Node>) -> Self {
         let splice = loop {
             let first_ptr = list.first_ptr.load(R_ORD);
             let last_ptr  = list.last_ptr .load(R_ORD);
