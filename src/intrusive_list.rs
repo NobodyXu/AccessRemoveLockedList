@@ -413,12 +413,19 @@ impl<'a, Node: IntrusiveListNode<'a>> Splice<'a, Node> {
         }
     }
 }
-impl<'a, Node: IntrusiveListNode<'a>> From<Splice<'a, Node>> for (&'a Node, &'a Node) {
+impl<'a, Node: IntrusiveListNode<'a>>
+    From<Splice<'a, Node>> for Option<(&'a Node, &'a Node)>
+{
+    /// If `splice` is empty, then return value will be `None`.
     fn from(splice: Splice<'a, Node>) -> Self {
-        unsafe {(
-            &* (splice.first_ptr as *mut Node as *const Node),
-            &* (splice.last_ptr  as *mut Node as *const Node),
-        )}
+        if splice.is_empty() {
+            None
+        } else {
+            Some(unsafe {(
+                &* (splice.first_ptr as *mut Node as *const Node),
+                &* (splice.last_ptr  as *mut Node as *const Node),
+            )})
+        }
     }
 }
 impl<'a, Node: IntrusiveListNode<'a>> Iterator for Splice<'a, Node> {
