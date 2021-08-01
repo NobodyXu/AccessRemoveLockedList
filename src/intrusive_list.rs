@@ -539,24 +539,29 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>>
 
 #[cfg(test)]
 mod tests {
+    use once_cell::sync::Lazy;
+
     use concurrency_toolkit::run_test;
     use super::*;
-    
-    type Node<T = i32> = IntrusiveListNodeImpl<T>;
+
+    type Node<T = usize> = IntrusiveListNodeImpl<T>;
+
+    fn setup() -> &'static Vec<Node> {
+        static NODES: Lazy<Vec<Node>> = Lazy::new(|| {
+            (0..100).map(Node::new).collect()
+        });
+        &NODES
+    }
 
     #[test]
-    fn test_splice() {
+    fn test_splice_push_back() {
         run_test!({
-            let mut vec = Vec::new();
-            for i in 0..100 {
-                vec.push(Node::new(i));
-            }
-            let vec = vec;
+            let nodes = setup();
 
             let mut splice: Splice<'_, _> = Default::default();
 
             // Test push_back + next
-            for node in &vec {
+            for node in nodes {
                 unsafe { splice.push_back(node) };
                 assert!(!splice.is_empty());
             }
@@ -565,11 +570,18 @@ mod tests {
                 assert_eq!(index, *node.get_elem());
                 assert!(index < 100);
             }
+        });
+    }
+
+    #[test]
+    fn test_splice_push_back_and_push_front() {
+        run_test!({
+            let nodes = setup();
 
             let mut splice: Splice<'_, _> = Default::default();
 
             // Test push_back + push_front + next
-            for node in &vec {
+            for node in nodes {
                 if *node.get_elem() % 2 == 0 {
                     unsafe { splice.push_back(node) };
                 } else {
