@@ -546,11 +546,8 @@ mod tests {
 
     type Node<T = usize> = IntrusiveListNodeImpl<T>;
 
-    fn setup() -> &'static Vec<Node> {
-        static NODES: Lazy<Vec<Node>> = Lazy::new(|| {
-            (0..100).map(Node::new).collect()
-        });
-        &NODES
+    fn setup() -> Vec<Node> {
+        (0..100).map(Node::new).collect()
     }
 
     #[test]
@@ -561,7 +558,7 @@ mod tests {
             let mut splice: Splice<'_, _> = Default::default();
 
             // Test push_back + next
-            for node in nodes {
+            for node in &nodes {
                 unsafe { splice.push_back(node) };
                 assert!(!splice.is_empty());
             }
@@ -581,7 +578,7 @@ mod tests {
             let mut splice: Splice<'_, _> = Default::default();
 
             // Test push_back + push_front + next
-            for node in nodes {
+            for node in &nodes {
                 if *node.get_elem() % 2 == 0 {
                     unsafe { splice.push_back(node) };
                 } else {
