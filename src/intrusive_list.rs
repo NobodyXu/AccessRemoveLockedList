@@ -537,58 +537,64 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>>
     }
 }
 
-impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a, Node> {
-    type Item = &'a Node;
-    type IntoIter = IntrusiveListIterator<'a, 'b, Node>;
+#[cfg(test)]
+mod tests {
+    use concurrency_toolkit::run_test;
+    use super::*;
+    
+    type Node<T = i32> = IntrusiveListNodeImpl<T>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter::from_list(self)
-    }
-}
-
-pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
-    splice: Splice<'a, Node>,
-    phantom: PhantomData<&'b IntrusiveList<'a, Node>>
-}
-impl<'a, 'b, Node: IntrusiveListNode<'a>> IntrusiveListIterator<'a, 'b, Node> {
-    pub(crate) fn from_list(list: &'b IntrusiveList<'a, Node>) -> Self {
-        let splice = loop {
-            let first_ptr = list.first_ptr.load(R_ORD);
-            let last_ptr  = list.last_ptr .load(R_ORD);
-
-            if (first_ptr.is_null() && last_ptr.is_null()) ||
-               ( (!first_ptr.is_null()) && (!last_ptr.is_null()) )
-            {
-                break Splice {
-                    first_ptr,
-                    last_ptr,
-                    phantom: PhantomData
-                }
+    #[test]
+    fn test_splice() {
+        run_test!({
+            let mut vec = Vec::new();
+            for i in 0..100 {
+                vec.push(Node::new(i));
             }
-        };
-        Self {
-            splice,
-            phantom: PhantomData,
-        }
-    }
-}
-impl<'a, 'b, Node: IntrusiveListNode<'a>>
-    Iterator for IntrusiveListIterator<'a, 'b, Node>
-{
-    type Item = &'a Node;
+            let vec = vec;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.splice.next()
-    }
+            let mut splice: Splice<'_, _> = Default::default();
 
-    fn last(self) -> Option<Self::Item> {
-        self.splice.last()
-    }
-}
-impl<'a, 'b, Node: IntrusiveListNode<'a>>
-    DoubleEndedIterator for IntrusiveListIterator<'a, 'b, Node>
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.splice.next_back()
+            // Test push_back + next
+            for node in &vec {
+                unsafe { splice.push_back(node) };
+                assert!(!splice.is_empty());
+            }
+
+            for (index, node) in splice.iter().enumerate() {
+                assert_eq!(index, *node.get_elem());
+                assert!(index < 100);
+            }
+
+            let mut splice: Splice<'_, _> = Default::default();
+
+            // Test push_back + push_front + next
+            for node in &vec {
+                if *node.get_elem() % 2 == 0 {
+                    unsafe { splice.push_back(node) };
+                } else {
+                    unsafe { splice.push_front(node) };
+                }
+
+                eprintln!("node = {:#?}", node);
+                eprintln!("splice = {:#?}", splice);
+                assert!(!splice.is_empty());
+            }
+
+            let mut iter = splice.iter();
+
+            for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
+                assert!(index < 100);
+                assert_eq!(index % 2, 1);
+                assert_eq!(index, *node.get_elem());
+            }
+            assert!(!splice.is_empty());
+
+            for (index, node) in (0..100).step_by(2).zip(iter) {
+                assert!(index < 100);
+                assert_eq!(index % 2, 0);
+                assert_eq!(index, *node.get_elem());
+            }
+        });
     }
 }
