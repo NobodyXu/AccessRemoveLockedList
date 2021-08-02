@@ -14,3 +14,6 @@ permutation_testing = ["concurrency_toolkit/permutation_testing"]
 # Since concurrency_toolkit only allows one feature enabled at a time, 
 # use default-features = false to disable its default feature (std sync)
 concurrency_toolkit = { version = "0.2.6", default-features = false }
+
+[dev-dependencies]
+assert_matches = "1.5.0"
