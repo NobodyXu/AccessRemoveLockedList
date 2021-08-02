@@ -456,7 +456,7 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a,
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
     last_ptr: *mut (),
@@ -692,4 +692,5 @@ mod tests {
             assert_eq!(index, *node.get_elem());
         }
     }
+
 }
