@@ -75,12 +75,16 @@ pub struct IntrusiveList<'a, Node: IntrusiveListNode<'a>> {
     last_ptr: AtomicPtr<()>,
     phantom: PhantomData<&'a Node>,
 }
+impl<'a, Node: IntrusiveListNode<'a> + Debug> Debug for IntrusiveList<'a, Node> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        fmt.debug_list().entries(self).finish()
+    }
+}
 impl<'a, Node: IntrusiveListNode<'a>> Default for IntrusiveList<'a, Node> {
     fn default() -> Self {
         Self::new()
     }
 }
-
 impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     pub fn new() -> Self {
         Self {
