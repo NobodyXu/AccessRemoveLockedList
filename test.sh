@@ -23,5 +23,5 @@ if [ -z ${CLEARED+x} ]; then
     exec env -i CLEARED=1 PATH="$PATH" $0 $@
 else
     cd $(dirname $(realpath $0))
-    main
+    main $@
 fi
