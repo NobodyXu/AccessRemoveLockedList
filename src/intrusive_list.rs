@@ -546,6 +546,7 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_matches::assert_matches;
 
     type Node<T = usize> = IntrusiveListNodeImpl<T>;
 
@@ -664,6 +665,30 @@ mod tests {
         for (index, node) in (0..100).step_by(2).zip(iter) {
             assert!(index < 100);
             assert_eq!(index % 2, 0);
+            assert_eq!(index, *node.get_elem());
+        }
+    }
+
+    #[concurrency_toolkit::test]
+    fn test_iterator() {
+        let nodes = setup();
+
+        let mut splice: Splice<'_, _> = Default::default();
+ 
+        assert_matches!(splice.iter().next(), None);
+        assert_matches!(splice.iter().last(), None);
+        assert_matches!(splice.iter().next_back(), None);
+
+        for node in &nodes {
+            unsafe { splice.push_back(node) };
+            assert!(!splice.is_empty());
+        }
+
+        assert_matches!(splice.iter().next(), Some(node) if *node.get_elem() == 0);
+        assert_matches!(splice.iter().last(), Some(node) if *node.get_elem() == 99);
+        assert_matches!(splice.iter().next_back(), Some(node) if *node.get_elem() == 99);
+
+        for (node, index) in splice.iter().rev().zip((0..100).rev()) {
             assert_eq!(index, *node.get_elem());
         }
     }
