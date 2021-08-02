@@ -743,4 +743,43 @@ mod tests {
             assert_lt!(index, 100);
         }
     }
+
+    #[concurrency_toolkit::test]
+    fn test_list_push_back_splice_and_push_front_splice() {
+        let nodes = setup();
+
+        let mut splice0: Splice<'_, _> = Default::default();
+        let mut splice1: Splice<'_, _> = Default::default();
+
+        for node in &nodes {
+            if *node.get_elem() % 2 == 0 {
+                unsafe { splice0.push_back(node) };
+                assert!(!splice0.is_empty());
+            } else {
+                unsafe { splice1.push_front(node) };
+                assert!(!splice1.is_empty());
+            }
+        }
+
+        let list = IntrusiveList::new();
+        list.push_back_splice(splice0);
+        list.push_front_splice(splice1);
+        assert!(!list.is_empty());
+
+        let mut iter = list.iter();
+
+        for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
+            assert_lt!(index, 100);
+            assert_eq!(index % 2, 1);
+            assert_eq!(index, *node.get_elem());
+        }
+        assert!(!list.is_empty());
+
+        for (index, node) in (0..100).step_by(2).zip(iter) {
+            assert_lt!(index, 100);
+            assert_eq!(index % 2, 0);
+            assert_eq!(index, *node.get_elem());
+        }
+    }
+
 }
