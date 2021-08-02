@@ -4,6 +4,7 @@ main() {
     export RUST_BACKTRACE=1
     # Allow environment variables to pass through
     export MIRIFLAGS="-Zmiri-disable-isolation"
+    export LANG=C.UTF8
     
     args="--no-default-features"
     miri_args="$args --target-dir miri-target"
