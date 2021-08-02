@@ -1,0 +1,42 @@
+name: Rust
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+  DEBUG: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Below is adapted from: https://github.community/t/create-matrix-with-multiple-os-and-env-for-each-one/16895
+    strategy:
+        matrix:
+          include:
+            - os: ubuntu-18.04 # Use linux kernel 5.4, which doesn't have clone3
+            - os: ubuntu-20.04 # Use linux kernel that have clone3
+
+    container: nobodyxu/rust-and-clang
+    steps:
+      - name: List version of the software
+        run: |
+          set -xe
+          cargo --version
+          clang --version
+          ld.lld --version
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-v2
+      - name: Listing the dir for debugging
+        run: tree
+      - name: test
+        run: ./test.sh
