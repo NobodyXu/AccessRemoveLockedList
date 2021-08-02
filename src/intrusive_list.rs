@@ -547,6 +547,7 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>>
 mod tests {
     use super::*;
     use assert_matches::assert_matches;
+    use more_asserts::assert_lt;
 
     type Node<T = usize> = IntrusiveListNodeImpl<T>;
 
@@ -574,7 +575,7 @@ mod tests {
 
         for (index, node) in splice0.iter().enumerate() {
             assert_eq!(index, *node.get_elem());
-            assert!(index < 50);
+            assert_lt!(index, 50);
         }
 
         let mut splice1: Splice<'_, _> = Default::default();
@@ -586,14 +587,14 @@ mod tests {
 
         for (index, node) in splice1.iter().enumerate() {
             assert_eq!(index + 50, *node.get_elem());
-            assert!(index < 50);
+            assert_lt!(index, 50);
         }
 
         splice0.push_back_splice(splice1);
 
         for (index, node) in splice0.iter().enumerate() {
             assert_eq!(index, *node.get_elem());
-            assert!(index < 100);
+            assert_lt!(index, 100);
         }
     }
 
@@ -611,22 +612,20 @@ mod tests {
                 unsafe { splice.push_front(node) };
             }
 
-            eprintln!("node = {:#?}", node);
-            eprintln!("splice = {:#?}", splice);
             assert!(!splice.is_empty());
         }
 
         let mut iter = splice.iter();
 
         for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
-            assert!(index < 100);
+            assert_lt!(index, 100);
             assert_eq!(index % 2, 1);
             assert_eq!(index, *node.get_elem());
         }
         assert!(!splice.is_empty());
 
         for (index, node) in (0..100).step_by(2).zip(iter) {
-            assert!(index < 100);
+            assert_lt!(index, 100);
             assert_eq!(index % 2, 0);
             assert_eq!(index, *node.get_elem());
         }
@@ -656,14 +655,14 @@ mod tests {
         let mut iter = splice.iter();
 
         for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
-            assert!(index < 100);
+            assert_lt!(index, 100);
             assert_eq!(index % 2, 1);
             assert_eq!(index, *node.get_elem());
         }
         assert!(!splice.is_empty());
 
         for (index, node) in (0..100).step_by(2).zip(iter) {
-            assert!(index < 100);
+            assert_lt!(index, 100);
             assert_eq!(index % 2, 0);
             assert_eq!(index, *node.get_elem());
         }
