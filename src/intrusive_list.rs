@@ -782,4 +782,20 @@ mod tests {
         }
     }
 
+    #[concurrency_toolkit::test]
+    fn test_list_clear() {
+        let nodes = setup();
+
+        let mut list = IntrusiveList::new();
+
+        for node in &nodes[0..50] {
+            unsafe { list.push_back(node) };
+        }
+        assert!(!list.is_empty());
+
+        list.clear();
+        assert!(list.is_empty());
+
+        assert_eq!("[]", format!("{:#?}", list));
+    }
 }
