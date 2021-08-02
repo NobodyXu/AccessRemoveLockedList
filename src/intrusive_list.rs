@@ -539,7 +539,6 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>>
 
 #[cfg(test)]
 mod tests {
-    use concurrency_toolkit::run_test;
     use super::*;
 
     type Node<T = usize> = IntrusiveListNodeImpl<T>;
@@ -548,60 +547,56 @@ mod tests {
         (0..100).map(Node::new).collect()
     }
 
-    #[test]
+    #[concurrency_toolkit::test]
     fn test_splice_push_back() {
-        run_test!({
-            let nodes = setup();
+        let nodes = setup();
 
-            let mut splice: Splice<'_, _> = Default::default();
+        let mut splice: Splice<'_, _> = Default::default();
 
-            // Test push_back + next
-            for node in &nodes {
-                unsafe { splice.push_back(node) };
-                assert!(!splice.is_empty());
-            }
+        // Test push_back + next
+        for node in &nodes {
+            unsafe { splice.push_back(node) };
+            assert!(!splice.is_empty());
+        }
 
-            for (index, node) in splice.iter().enumerate() {
-                assert_eq!(index, *node.get_elem());
-                assert!(index < 100);
-            }
-        });
+        for (index, node) in splice.iter().enumerate() {
+            assert_eq!(index, *node.get_elem());
+            assert!(index < 100);
+        }
     }
 
-    #[test]
+    #[concurrency_toolkit::test]
     fn test_splice_push_back_and_push_front() {
-        run_test!({
-            let nodes = setup();
+        let nodes = setup();
 
-            let mut splice: Splice<'_, _> = Default::default();
+        let mut splice: Splice<'_, _> = Default::default();
 
-            // Test push_back + push_front + next
-            for node in &nodes {
-                if *node.get_elem() % 2 == 0 {
-                    unsafe { splice.push_back(node) };
-                } else {
-                    unsafe { splice.push_front(node) };
-                }
-
-                eprintln!("node = {:#?}", node);
-                eprintln!("splice = {:#?}", splice);
-                assert!(!splice.is_empty());
+        // Test push_back + push_front + next
+        for node in &nodes {
+            if *node.get_elem() % 2 == 0 {
+                unsafe { splice.push_back(node) };
+            } else {
+                unsafe { splice.push_front(node) };
             }
 
-            let mut iter = splice.iter();
-
-            for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
-                assert!(index < 100);
-                assert_eq!(index % 2, 1);
-                assert_eq!(index, *node.get_elem());
-            }
+            eprintln!("node = {:#?}", node);
+            eprintln!("splice = {:#?}", splice);
             assert!(!splice.is_empty());
+        }
 
-            for (index, node) in (0..100).step_by(2).zip(iter) {
-                assert!(index < 100);
-                assert_eq!(index % 2, 0);
-                assert_eq!(index, *node.get_elem());
-            }
-        });
+        let mut iter = splice.iter();
+
+        for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
+            assert!(index < 100);
+            assert_eq!(index % 2, 1);
+            assert_eq!(index, *node.get_elem());
+        }
+        assert!(!splice.is_empty());
+
+        for (index, node) in (0..100).step_by(2).zip(iter) {
+            assert!(index < 100);
+            assert_eq!(index % 2, 0);
+            assert_eq!(index, *node.get_elem());
+        }
     }
 }
