@@ -317,6 +317,11 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     }
 }
 
+/// `Splice` can be used to
+///  - move list nodes between `IntrusiveList` efficiently;
+///  - insert/remove list nodes from one `IntrusiveList` efficiently;
+///  - iterate over list and remove nodes without starving the rest of readers/removers
+///    waiting on `IntrusiveList`.
 #[derive(Debug)]
 pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
@@ -589,7 +594,6 @@ mod tests {
             assert!(index < 100);
         }
     }
-
 
     #[concurrency_toolkit::test]
     fn test_splice_push_back_and_push_front() {
