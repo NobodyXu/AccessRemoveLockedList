@@ -456,6 +456,7 @@ impl<'a, 'b, Node: IntrusiveListNode<'a>> IntoIterator for &'b IntrusiveList<'a,
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct IntrusiveListIterator<'a, 'b, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
     last_ptr: *mut (),
