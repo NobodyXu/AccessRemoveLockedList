@@ -2,6 +2,7 @@ use core::marker::PhantomData;
 use core::ptr;
 use core::iter::{Iterator, IntoIterator, DoubleEndedIterator};
 use core::convert::From;
+use core::fmt::{self, Debug, Formatter};
 
 use concurrency_toolkit::atomic::{AtomicPtr, Ordering};
 
@@ -328,11 +329,15 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
 ///  - insert/remove list nodes from one `IntrusiveList` efficiently;
 ///  - iterate over list and remove nodes without starving the rest of readers/removers
 ///    waiting on `IntrusiveList`.
-#[derive(Debug)]
 pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     first_ptr: * mut (),
     last_ptr: *mut (),
     phantom: PhantomData<&'a Node>,
+}
+impl<'a, Node: IntrusiveListNode<'a> + Debug> Debug for Splice<'a, Node> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        fmt.debug_list().entries(self).finish()
+    }
 }
 impl<'a, Node: IntrusiveListNode<'a>> Default for Splice<'a, Node> {
     fn default() -> Self {
