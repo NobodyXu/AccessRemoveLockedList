@@ -555,24 +555,6 @@ mod tests {
     }
 
     #[concurrency_toolkit::test]
-    fn test_splice_push_back() {
-        let nodes = setup();
-
-        let mut splice: Splice<'_, _> = Default::default();
-
-        // Test push_back + next
-        for node in &nodes {
-            unsafe { splice.push_back(node) };
-            assert!(!splice.is_empty());
-        }
-
-        for (index, node) in splice.iter().enumerate() {
-            assert_eq!(index, *node.get_elem());
-            assert!(index < 100);
-        }
-    }
-
-    #[concurrency_toolkit::test]
     fn test_splice_push_back_splice() {
         let nodes = setup();
 
