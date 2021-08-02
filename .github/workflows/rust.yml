@@ -9,13 +9,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Below is adapted from: https://github.community/t/create-matrix-with-multiple-os-and-env-for-each-one/16895
-    strategy:
-        matrix:
-          include:
-            - os: ubuntu-18.04 # Use linux kernel 5.4, which doesn't have clone3
-            - os: ubuntu-20.04 # Use linux kernel that have clone3
-
     container: nobodyxu/rust-and-clang
     steps:
       - name: List version of the software
