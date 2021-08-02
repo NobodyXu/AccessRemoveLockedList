@@ -707,4 +707,40 @@ mod tests {
         }
     }
 
+    #[concurrency_toolkit::test]
+    fn test_list_push_back_splice() {
+        let nodes = setup();
+
+        let list = IntrusiveList::new();
+        eprintln!("list = {:#?}", list);
+
+        for node in &nodes[0..50] {
+            unsafe { list.push_back(node) };
+            assert!(!list.is_empty());
+        }
+
+        for (index, node) in list.iter().enumerate() {
+            assert_eq!(index, *node.get_elem());
+            assert_lt!(index, 50);
+        }
+
+        let mut splice: Splice<'_, _> = Default::default();
+
+        for node in &nodes[50..100] {
+            unsafe { splice.push_back(node) };
+            assert!(!splice.is_empty());
+        }
+
+        for (index, node) in splice.iter().enumerate() {
+            assert_eq!(index + 50, *node.get_elem());
+            assert_lt!(index, 50);
+        }
+
+        list.push_back_splice(splice);
+
+        for (index, node) in list.iter().enumerate() {
+            assert_eq!(index, *node.get_elem());
+            assert_lt!(index, 100);
+        }
+    }
 }
