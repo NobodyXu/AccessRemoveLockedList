@@ -20,7 +20,7 @@ main() {
 }
 
 if [ -z ${CLEARED+x} ]; then
-    exec env -i CLEARED=1 PATH="$PATH" $0 $@
+    exec env -i CLEARED=1 TERM="$TERM" PATH="$PATH" $0 $@
 else
     cd $(dirname $(realpath $0))
     main $@
