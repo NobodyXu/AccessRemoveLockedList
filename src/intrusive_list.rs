@@ -548,6 +548,13 @@ mod tests {
     }
 
     #[concurrency_toolkit::test]
+    fn test_splice_empty() {
+        let splice: Splice<'_, Node> = Default::default();
+
+        assert!(splice.is_empty());
+    }
+
+    #[concurrency_toolkit::test]
     fn test_splice_push_back() {
         let nodes = setup();
 
@@ -564,6 +571,43 @@ mod tests {
             assert!(index < 100);
         }
     }
+
+    #[concurrency_toolkit::test]
+    fn test_splice_push_back_splice() {
+        let nodes = setup();
+
+        let mut splice0: Splice<'_, _> = Default::default();
+
+        for node in &nodes[0..50] {
+            unsafe { splice0.push_back(node) };
+            assert!(!splice0.is_empty());
+        }
+
+        for (index, node) in splice0.iter().enumerate() {
+            assert_eq!(index, *node.get_elem());
+            assert!(index < 50);
+        }
+
+        let mut splice1: Splice<'_, _> = Default::default();
+
+        for node in &nodes[50..100] {
+            unsafe { splice1.push_back(node) };
+            assert!(!splice1.is_empty());
+        }
+
+        for (index, node) in splice1.iter().enumerate() {
+            assert_eq!(index + 50, *node.get_elem());
+            assert!(index < 50);
+        }
+
+        splice0.push_back_splice(splice1);
+
+        for (index, node) in splice0.iter().enumerate() {
+            assert_eq!(index, *node.get_elem());
+            assert!(index < 100);
+        }
+    }
+
 
     #[concurrency_toolkit::test]
     fn test_splice_push_back_and_push_front() {
