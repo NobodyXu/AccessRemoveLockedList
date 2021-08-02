@@ -629,4 +629,41 @@ mod tests {
             assert_eq!(index, *node.get_elem());
         }
     }
+
+    #[concurrency_toolkit::test]
+    fn test_splice_push_back_splice_and_push_front_splice() {
+        let nodes = setup();
+
+        let mut splice0: Splice<'_, _> = Default::default();
+        let mut splice1: Splice<'_, _> = Default::default();
+
+        for node in &nodes {
+            if *node.get_elem() % 2 == 0 {
+                unsafe { splice0.push_back(node) };
+                assert!(!splice0.is_empty());
+            } else {
+                unsafe { splice1.push_front(node) };
+                assert!(!splice1.is_empty());
+            }
+        }
+
+        let mut splice:  Splice<'_, _> = Default::default();
+        splice.push_back_splice(splice0);
+        splice.push_front_splice(splice1);
+
+        let mut iter = splice.iter();
+
+        for (index, node) in (1..100).rev().step_by(2).zip(&mut iter) {
+            assert!(index < 100);
+            assert_eq!(index % 2, 1);
+            assert_eq!(index, *node.get_elem());
+        }
+        assert!(!splice.is_empty());
+
+        for (index, node) in (0..100).step_by(2).zip(iter) {
+            assert!(index < 100);
+            assert_eq!(index % 2, 0);
+            assert_eq!(index, *node.get_elem());
+        }
+    }
 }
