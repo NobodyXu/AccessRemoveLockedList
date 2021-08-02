@@ -189,7 +189,7 @@ impl<'a, Node: IntrusiveListNode<'a>> IntrusiveList<'a, Node> {
     }
 
     pub fn is_empty(&self) -> bool {
-        (!self.first_ptr.load(R_ORD).is_null()) || (!self.last_ptr.load(R_ORD).is_null())
+        self.first_ptr.load(R_ORD).is_null() && self.last_ptr.load(R_ORD).is_null()
     }
 
     // All methods below are removal methods, which takes the write lock:
