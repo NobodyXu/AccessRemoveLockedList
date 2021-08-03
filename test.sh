@@ -10,7 +10,6 @@ main() {
     miri_args="$args --target-dir miri-target"
 
     feature="permutation_testing"
-    cargo test $args --features $feature $@
     cargo test --release $args --features $feature $@
 
     for feature in default; do
