@@ -6,8 +6,8 @@ main() {
     export MIRIFLAGS="-Zmiri-disable-isolation"
     export LANG=C.UTF8
 
-    export LOOM_CHECKPOINT_FILE=target/loom_test.json
-    export LOOM_CHECKPOINT_INTERVAL=1
+    #export LOOM_CHECKPOINT_FILE=target/loom_test.json
+    #export LOOM_CHECKPOINT_INTERVAL=1
     export LOOM_LOG=1
     export LOOM_LOCATION=1
     export LOOM_MAX_PREEMPTIONS=10
