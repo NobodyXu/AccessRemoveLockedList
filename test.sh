@@ -1,21 +1,28 @@
 #!/bin/sh -ex
 
+args="--no-default-features"
+
+run_test() {
+    cargo test $args --target-dir target-"$1" --features "$1" ${@:2}
+}
+
+run_miri() {
+    cargo +nightly miri test $args --target-dir miri-target-"$1" --features "$1" ${@:2}
+}
+
 main() {
     export RUST_BACKTRACE=1
     # Allow environment variables to pass through
     export MIRIFLAGS="-Zmiri-disable-isolation"
     export LANG=C.UTF8
 
-    args="--no-default-features"
-    miri_args="$args --target-dir miri-target"
+    run_test default $@
+    run_test default --release $@
 
-    feature="permutation_testing"
-    cargo test --release $args --features $feature $@
+    run_test permutation_testing --release $@
 
-    for feature in default; do
-        cargo +nightly miri test $miri_args --features $feature $@
-        cargo +nightly miri test --release $miri_args --features $feature $@
-    done
+    run_miri default $@
+    run_miri default ---release $@
 }
 
 if [ -z ${CLEARED+x} ]; then
