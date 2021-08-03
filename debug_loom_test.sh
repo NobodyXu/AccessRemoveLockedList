@@ -17,5 +17,5 @@ exec cargo test \
     --release \
     --no-default-features \
     --features "$feature" \
-    --test $1 \
+    $1 \
     ${@:2}
