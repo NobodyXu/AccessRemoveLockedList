@@ -28,7 +28,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-v2
+          key: ${{ github.event.repository.name }}-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-v2
       - name: Listing the dir for debugging
         run: tree
       - name: test
