@@ -1,3 +1,3 @@
-# AccessRemoveLockedList
+# concurrent_read_push_list
 
-concurrent list in rust that cannot access(RW) and delete at the same time or have concurrent deletes.
+Concurrent list in Rust that can read and push to the list at the same time, but cannot perform read/push with removal or perform removal concurrently.
