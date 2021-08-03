@@ -27,8 +27,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
-            miri-target/
+            *target*/
           key: ${{ github.event.repository.name }}-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-v2
       - name: Listing the dir for debugging
         run: tree
