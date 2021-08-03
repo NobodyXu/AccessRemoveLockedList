@@ -21,8 +21,9 @@ main() {
 
     run_test permutation_testing --release $@
 
-    run_miri default $@
-    run_miri default ---release $@
+    # Temporarily disable miri due to "unimplemented sysconf name" on the workflow
+    #run_miri default $@
+    #run_miri default ---release $@
 }
 
 if [ -z ${CLEARED+x} ]; then
