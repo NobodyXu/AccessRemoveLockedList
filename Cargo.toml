@@ -8,12 +8,13 @@ edition = "2018"
 
 [features]
 default = ["concurrency_toolkit/default"]
-permutation_testing = ["concurrency_toolkit/permutation_testing"]
+permutation_testing = ["concurrency_toolkit/permutation_testing", "loom"]
 
 [dependencies]
 # Since concurrency_toolkit only allows one feature enabled at a time, 
 # use default-features = false to disable its default feature (std sync)
 concurrency_toolkit = { version = "0.2.6", default-features = false }
+loom = { version = "0.5.1", features = ["checkpoint"], optional = true }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
