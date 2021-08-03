@@ -12,6 +12,7 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
+cd $(dirname $(realpath $0))
 exec cargo test \
     --target-dir target-"$feature" \
     --release \
