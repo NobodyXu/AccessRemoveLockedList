@@ -826,4 +826,22 @@ mod tests {
             assert_lt!(index, 50);
         }
     }
+
+    #[concurrency_toolkit::test]
+    fn test_list_remove_if() {
+        let nodes = setup();
+
+        let mut list = IntrusiveList::new();
+
+        for node in &nodes {
+            unsafe { list.push_back(node) };
+        }
+        assert!(!list.is_empty());
+
+        assert_eq!((50, 50), list.remove_if(|node| *node.get_elem() % 2 == 1));
+
+        for (index, node) in (0..100).step_by(2).zip(&list) {
+            assert_eq!(index, *node.get_elem());
+        }
+    }
 }
