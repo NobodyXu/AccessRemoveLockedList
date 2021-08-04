@@ -565,6 +565,11 @@ mod tests {
     use assert_matches::assert_matches;
     use more_asserts::assert_lt;
 
+    use concurrency_toolkit::sync::{Arc, RwLock};
+    use concurrency_toolkit::{spawn, join, yield_now};
+
+    use once_cell::sync::Lazy;
+
     type Node<T = usize> = IntrusiveListNodeImpl<T>;
 
     fn setup() -> Vec<Node> {
@@ -844,5 +849,35 @@ mod tests {
         for (index, node) in (0..100).step_by(2).zip(&list) {
             assert_eq!(index, *node.get_elem());
         }
+    }
+
+    #[concurrency_toolkit::test]
+    fn test_list_push_back_splice_concurrent() {
+        static NODES: Lazy<Vec<Node>> = Lazy::new(setup);
+        static LIST: Lazy<IntrusiveList<'static, Node>> = Lazy::new(IntrusiveList::new);
+
+        let mut splice0: Splice<'_, _> = Default::default();
+        let mut splice1: Splice<'_, _> = Default::default();
+
+        let nodes = &*NODES;
+
+        for node in &nodes[0..50] {
+            unsafe { splice0.push_back(node) };
+        }
+
+        for node in &nodes[50..100] {
+            unsafe { splice1.push_back(node) };
+        }
+
+        let handle0 = spawn!({
+            LIST.push_back_splice(splice0);
+        });
+
+        let handle1 = spawn!({
+            LIST.push_back_splice(splice1);
+        });
+
+        join!(handle0);
+        join!(handle1);
     }
 }
