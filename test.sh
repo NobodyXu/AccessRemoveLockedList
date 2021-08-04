@@ -16,6 +16,8 @@ main() {
     export MIRIFLAGS="-Zmiri-disable-isolation"
     export LANG=C.UTF8
 
+    export LOOM_MAX_BRANCHES=100000
+
     run_test default $@
     run_test default --release $@
 

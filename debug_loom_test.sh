@@ -5,6 +5,8 @@ export LOOM_CHECKPOINT_INTERVAL=1
 export LOOM_LOG=1
 export LOOM_LOCATION=1
 
+export LOOM_MAX_BRANCHES=100000
+
 feature="permutation_testing"
 
 if [ $# -lt 1 ]; then
