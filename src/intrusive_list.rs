@@ -338,6 +338,7 @@ pub struct Splice<'a, Node: IntrusiveListNode<'a>> {
     last_ptr: *mut (),
     phantom: PhantomData<&'a Node>,
 }
+unsafe impl<'a, Node: IntrusiveListNode<'a> + Debug> Send for Splice<'a, Node> {}
 impl<'a, Node: IntrusiveListNode<'a> + Debug> Debug for Splice<'a, Node> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         fmt.debug_list().entries(self).finish()
