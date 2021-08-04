@@ -798,4 +798,32 @@ mod tests {
 
         assert_eq!("[]", format!("{:#?}", list));
     }
+
+    #[concurrency_toolkit::test]
+    fn test_list_splice() {
+        let nodes = setup();
+
+        let mut list = IntrusiveList::new();
+
+        for node in &nodes {
+            unsafe { list.push_back(node) };
+        }
+        assert!(!list.is_empty());
+
+        let first = list.iter().nth(50).unwrap();
+        let last  = list.iter().last().unwrap();
+
+        // TODO: Failed in `unwrap()` when testing under miri
+        for (index, node) in unsafe {
+            list.splice(first, last).unwrap()
+        }.iter().enumerate() {
+            assert_eq!(index + 50, *node.get_elem());
+            assert_lt!(index, 50);
+        }
+
+        for (index, node) in list.iter().enumerate() {
+            assert_eq!(index, *node.get_elem());
+            assert_lt!(index, 50);
+        }
+    }
 }
